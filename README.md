@@ -7,7 +7,7 @@ FocusGuard is a native macOS commitment blocker. Describe a focus session in ord
 
 
 > [!IMPORTANT]
-> Note—it was fully coded by AI. Proceed with caution. By now, I fully back up my laptop, and I know how to kill applications through terminal.
+> Note—it was fully coded by AI. Proceed with caution. By now, I fully back up my laptop, and I know how to kill applications through terminal, so I'm fine with the amount of access. But no guarantee this won't brick your machine!
 
 ## What it does
 
