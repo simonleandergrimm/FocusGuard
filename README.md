@@ -101,7 +101,7 @@ open dist/FocusGuard.app
 
 The build script places Swift and Clang caches inside `.build`, so normal builds do not depend on writable global cache directories. Rebuilding the app does not replace a previously installed privileged helper; use the **Update** action in FocusGuard after helper changes.
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
+This repository is not accepting external contributions. For security issues, see [SECURITY.md](SECURITY.md).
 
 ## Uninstall
 
