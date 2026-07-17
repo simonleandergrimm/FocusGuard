@@ -4,6 +4,7 @@
 
 FocusGuard is a native macOS commitment blocker. Describe a focus session in ordinary language—or set it up manually—review the exact plan, and activate it.
 
+<img width="932" height="570" alt="image" src="https://github.com/user-attachments/assets/971d5f8f-6921-4c98-ad22-43ed89361a68" />
 
 
 > [!IMPORTANT]
