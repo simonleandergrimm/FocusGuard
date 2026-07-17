@@ -1,0 +1,55 @@
+import Darwin
+import SwiftUI
+
+@main
+struct FocusGuardApp: App {
+    private static let defaultInterfaceZoom = 1.15
+    private static let minimumInterfaceZoom = 0.8
+    private static let maximumInterfaceZoom = 1.6
+
+    @StateObject private var model: AppModel
+    @AppStorage("interfaceZoom") private var interfaceZoom = Self.defaultInterfaceZoom
+
+    init() {
+        guard AppInstanceCoordinator.shouldContinueLaunching() else {
+            Darwin.exit(EXIT_SUCCESS)
+        }
+        _model = StateObject(wrappedValue: AppModel())
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView(model: model, interfaceZoom: $interfaceZoom)
+                .frame(minWidth: 820, minHeight: 650)
+                .background(WindowAppearanceConfigurator())
+        }
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1_120, height: 760)
+        .commands {
+            CommandGroup(after: .toolbar) {
+                Divider()
+                Button("Zoom In") {
+                    interfaceZoom = min(Self.maximumInterfaceZoom, interfaceZoom + 0.1)
+                }
+                .keyboardShortcut("+", modifiers: .command)
+                .disabled(interfaceZoom >= Self.maximumInterfaceZoom)
+
+                Button("Zoom Out") {
+                    interfaceZoom = max(Self.minimumInterfaceZoom, interfaceZoom - 0.1)
+                }
+                .keyboardShortcut("-", modifiers: .command)
+                .disabled(interfaceZoom <= Self.minimumInterfaceZoom)
+
+                Button("Default Size") {
+                    interfaceZoom = Self.defaultInterfaceZoom
+                }
+                .keyboardShortcut("0", modifiers: .command)
+                .disabled(abs(interfaceZoom - Self.defaultInterfaceZoom) < 0.001)
+            }
+        }
+
+        Settings {
+            SettingsView(model: model)
+        }
+    }
+}

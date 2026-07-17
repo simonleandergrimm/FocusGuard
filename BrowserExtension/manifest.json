@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "FocusGuard Landing Pages",
+  "version": "0.3.0",
+  "description": "Redirects active FocusGuard website blocks to the local reminder page.",
+  "icons": {
+    "16": "icons/focusguard-16.png",
+    "32": "icons/focusguard-32.png",
+    "128": "icons/focusguard-128.png"
+  },
+  "permissions": [
+    "tabs",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:8765/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

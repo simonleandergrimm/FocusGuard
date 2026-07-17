@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-14
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show tool versions
+        run: |
+          swift --version
+          node --version
+
+      - name: Test Swift package
+        run: swift test
+
+      - name: Test browser extension
+        run: node Scripts/test-browser-extension.js
+
+      - name: Build app bundle
+        run: ./Scripts/build-app.sh
