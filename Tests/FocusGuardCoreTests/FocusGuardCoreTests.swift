@@ -264,35 +264,34 @@ func domainNormalization() {
 }
 
 @Test
-func newsCategoryAlwaysIncludesGermanAndSwissTargets() {
+func newsCategoryMatchesAcrossLanguages() {
     let general = TargetPresetCatalog.match(prompt: "Block news for two hours")
-    let english = TargetPresetCatalog.match(prompt: "Block major German news sites for two hours")
-    let german = TargetPresetCatalog.match(prompt: "Blockiere große deutsche Nachrichtenseiten")
+    let english = TargetPresetCatalog.match(prompt: "Block major news sites for two hours")
+    let german = TargetPresetCatalog.match(prompt: "Blockiere große Nachrichtenseiten")
 
     #expect(general?.domains == TargetPresetCatalog.newsDomains)
     #expect(english?.domains == TargetPresetCatalog.newsDomains)
     #expect(german?.domains == TargetPresetCatalog.newsDomains)
-    #expect(Set(TargetPresetCatalog.newsDomains).isSuperset(of: TargetPresetCatalog.majorGermanNewsDomains))
-    #expect(TargetPresetCatalog.newsDomains.contains("handelsblatt.com"))
-    #expect(TargetPresetCatalog.newsDomains.contains("srf.ch"))
-    #expect(TargetPresetCatalog.newsDomains.contains("nzz.ch"))
+    #expect(TargetPresetCatalog.newsDomains.contains("nytimes.com"))
+    #expect(TargetPresetCatalog.newsDomains.contains("bbc.com"))
+    #expect(TargetPresetCatalog.newsDomains.contains("reuters.com"))
     #expect(TargetPresetCatalog.match(prompt: "Block German language-learning sites") == nil)
 }
 
 @Test
-func emailCategoryUsesGmailAndSuperhumanTargets() {
+func emailCategoryUsesCommonProviders() {
     let match = TargetPresetCatalog.match(prompt: "Block email for two hours")
 
     #expect(match?.domains == TargetPresetCatalog.emailDomains)
     #expect(TargetPresetCatalog.emailDomains.contains("mail.google.com"))
-    #expect(TargetPresetCatalog.emailDomains.contains("mail.superhuman.com"))
+    #expect(TargetPresetCatalog.emailDomains.contains("outlook.office.com"))
     #expect(TargetPresetCatalog.match(prompt: "Block the Mail app for an hour") == nil)
 }
 
 @Test
 func categoryPresetsCanBeCombined() {
     let matches = TargetPresetCatalog.matches(
-        prompt: "Block email and major German news sites"
+        prompt: "Block email and major news sites"
     )
 
     #expect(matches.map(\.name) == ["email", "news sites"])
@@ -314,7 +313,7 @@ func explicitStrictnessParsingIsDeterministic() {
 @Test
 func llmDraftDecodesInterpretationAndClarificationFields() throws {
     let data = Data(
-        #"{"kind":"one_time","title":"German news","domains":["tagesschau.de"],"applications":[],"start_delay_minutes":0,"duration_minutes":60,"strictness":"focused","summary":"German news will be blocked for an hour.","interpretation":"Expanded the requested news category.","needs_clarification":false,"clarification_question":"","recurrence_days":[],"recurrence_start_hour":0,"recurrence_start_minute":0}"#.utf8
+        #"{"kind":"one_time","title":"news","domains":["nytimes.com"],"applications":[],"start_delay_minutes":0,"duration_minutes":60,"strictness":"focused","summary":"News will be blocked for an hour.","interpretation":"Expanded the requested news category.","needs_clarification":false,"clarification_question":"","recurrence_days":[],"recurrence_start_hour":0,"recurrence_start_minute":0}"#.utf8
     )
     let draft = try JSONDecoder().decode(LLMBlockDraft.self, from: data)
 

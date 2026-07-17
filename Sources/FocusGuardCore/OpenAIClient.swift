@@ -180,7 +180,7 @@ public struct OpenAIClient: Sendable {
 
         Target rules:
         - Include every website or application the person explicitly names.
-        - A named category, language, country, or geography (for example "major German news sites") authorizes you to expand only that category into 5–12 representative websites. Do not expand beyond the requested category.
+        - A named category, language, country, or geography (for example "major UK news sites") authorizes you to expand only that category into 5–12 representative websites. Do not expand beyond the requested category.
         - Domains must be bare canonical hostnames, without scheme, path, or wildcard.
         - Applications must be ordinary macOS application display names, not process names or system services.
         - Prefer well-known root domains. Do not manufacture plausible-looking domains.

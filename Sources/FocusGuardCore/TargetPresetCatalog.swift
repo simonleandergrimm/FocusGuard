@@ -14,34 +14,24 @@ public enum TargetPresetCatalog {
     public static let emailDomains = [
         "mail.google.com",
         "gmail.com",
-        "mail.superhuman.com",
+        "outlook.live.com",
+        "outlook.office.com",
+        "mail.yahoo.com",
+        "icloud.com",
     ]
 
-    public static let majorGermanNewsDomains = [
-        "tagesschau.de",
-        "spiegel.de",
-        "zeit.de",
-        "faz.net",
-        "handelsblatt.com",
-        "sueddeutsche.de",
-        "welt.de",
-        "n-tv.de",
-        "bild.de",
+    public static let newsDomains = [
+        "nytimes.com",
+        "washingtonpost.com",
+        "wsj.com",
+        "bbc.com",
+        "theguardian.com",
+        "cnn.com",
+        "reuters.com",
+        "apnews.com",
+        "ft.com",
+        "economist.com",
     ]
-
-    public static let majorSwissNewsDomains = [
-        "srf.ch",
-        "nzz.ch",
-        "tagesanzeiger.ch",
-        "blick.ch",
-        "20min.ch",
-        "watson.ch",
-        "nau.ch",
-        "republik.ch",
-    ]
-
-    public static let newsDomains =
-        majorGermanNewsDomains + majorSwissNewsDomains
 
     public static func match(prompt: String) -> TargetPresetMatch? {
         matches(prompt: prompt).first
@@ -86,7 +76,7 @@ public enum TargetPresetCatalog {
         """
         Curated category presets:
         - "email" means: \(emailDomains.joined(separator: ", ")).
-        - "news", including German or Swiss news, means: \(newsDomains.joined(separator: ", ")).
+        - "news" means: \(newsDomains.joined(separator: ", ")).
         Use the corresponding exact set when the person requests one of these categories or an obvious equivalent, unless they explicitly narrow it.
         """
     }
