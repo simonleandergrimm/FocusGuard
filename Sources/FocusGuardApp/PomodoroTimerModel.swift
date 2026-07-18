@@ -41,7 +41,8 @@ private final class PomodoroNotificationPresenter: NSObject, UNUserNotificationC
 @MainActor
 final class PomodoroTimerModel: ObservableObject {
     private static let storageKey = "pomodoroTimerState.v2"
-    private static let notificationIdentifier = "focusguard.pomodoro.complete"
+    private static let legacyNotificationIdentifier = "focusguard.pomodoro.complete"
+    private static let notificationIdentifierPrefix = "focusguard.pomodoro.complete"
 
     @Published private(set) var phase: PomodoroPhase = .focus
     @Published private(set) var focusMinutes = 45
@@ -55,17 +56,21 @@ final class PomodoroTimerModel: ObservableObject {
     private let notificationPresenter: PomodoroNotificationPresenter
     private var tickTask: Task<Void, Never>?
     private var notificationGeneration = UUID()
+    private var scheduledNotificationIdentifier: String?
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         let notificationPresenter = PomodoroNotificationPresenter()
         self.notificationPresenter = notificationPresenter
         UNUserNotificationCenter.current().delegate = notificationPresenter
+        UNUserNotificationCenter.current().removePendingNotificationRequests(
+            withIdentifiers: [Self.legacyNotificationIdentifier]
+        )
         restore()
         let now = Date()
         displayDate = now
-        reconcile(at: now)
-        if isRunning {
+        let advancedToCurrentInterval = reconcile(at: now)
+        if isRunning && !advancedToCurrentInterval {
             scheduleCompletionNotification()
         }
         tickTask = Task { [weak self] in
@@ -188,14 +193,23 @@ final class PomodoroTimerModel: ObservableObject {
         }
     }
 
-    private func reconcile(at date: Date) {
-        guard isRunning, let endDate, date >= endDate else { return }
-        isRunning = false
-        self.endDate = nil
-        phase = phase.next
-        storedRemainingSeconds = durationSeconds(for: phase)
-        notificationGeneration = UUID()
+    @discardableResult
+    private func reconcile(at date: Date) -> Bool {
+        guard isRunning, let currentEnd = endDate, date >= currentEnd else { return false }
+
+        var nextPhase = phase
+        var nextEnd = currentEnd
+        repeat {
+            nextPhase = nextPhase.next
+            nextEnd = nextEnd.addingTimeInterval(TimeInterval(durationSeconds(for: nextPhase)))
+        } while date >= nextEnd
+
+        phase = nextPhase
+        endDate = nextEnd
+        storedRemainingSeconds = remainingSeconds(at: date)
         persist()
+        scheduleCompletionNotification()
+        return true
     }
 
     private func restore() {
@@ -230,6 +244,8 @@ final class PomodoroTimerModel: ObservableObject {
     private func scheduleCompletionNotification() {
         guard let scheduledEnd = endDate else { return }
         let scheduledPhase = phase
+        let identifier = Self.notificationIdentifier(for: scheduledPhase, endingAt: scheduledEnd)
+        scheduledNotificationIdentifier = identifier
         let generation = UUID()
         notificationGeneration = generation
 
@@ -248,22 +264,21 @@ final class PomodoroTimerModel: ObservableObject {
                   self.endDate == scheduledEnd
             else { return }
 
-            center.removePendingNotificationRequests(withIdentifiers: [Self.notificationIdentifier])
             let content = UNMutableNotificationContent()
             switch scheduledPhase {
             case .focus:
                 content.title = "Focus session complete"
-                content.body = "Time for a short break."
+                content.body = "Your \(self.breakMinutes)-minute break has started."
             case .breakTime:
                 content.title = "Break complete"
-                content.body = "Ready for another focus session."
+                content.body = "Your next \(self.focusMinutes)-minute focus session has started."
             }
             content.sound = .default
             content.threadIdentifier = "focusguard-pomodoro"
 
             let delay = max(1, scheduledEnd.timeIntervalSinceNow)
             let request = UNNotificationRequest(
-                identifier: Self.notificationIdentifier,
+                identifier: identifier,
                 content: content,
                 trigger: UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
             )
@@ -273,8 +288,18 @@ final class PomodoroTimerModel: ObservableObject {
 
     private func cancelCompletionNotification() {
         notificationGeneration = UUID()
+        guard let scheduledNotificationIdentifier else { return }
+        self.scheduledNotificationIdentifier = nil
         UNUserNotificationCenter.current().removePendingNotificationRequests(
-            withIdentifiers: [Self.notificationIdentifier]
+            withIdentifiers: [scheduledNotificationIdentifier]
         )
+    }
+
+    private static func notificationIdentifier(
+        for phase: PomodoroPhase,
+        endingAt endDate: Date
+    ) -> String {
+        let endMilliseconds = Int64((endDate.timeIntervalSince1970 * 1_000).rounded())
+        return "\(notificationIdentifierPrefix).\(phase.rawValue).\(endMilliseconds)"
     }
 }
