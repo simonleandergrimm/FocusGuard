@@ -48,7 +48,6 @@ final class AppModel: ObservableObject {
     @Published var errorMessage: String?
 
     private let store: PolicyStore
-    private var applicationCatalog: ApplicationCatalog
     private var backgroundMonitorTask: Task<Void, Never>?
     private var undoExpirationTask: Task<Void, Never>?
     private var automaticHelperRepairAttempted = false
@@ -57,7 +56,7 @@ final class AppModel: ObservableObject {
     init() {
         let store = PolicyStore(fileURL: PolicyStore.defaultFileURL())
         self.store = store
-        self.applicationCatalog = ApplicationCatalog.load()
+        ApplicationCatalogStore.shared.warm()
 
         do {
             let retentionCutoff = Date().addingTimeInterval(-7 * 24 * 60 * 60)
@@ -216,7 +215,7 @@ final class AppModel: ObservableObject {
                         defaultStrictness: defaultStrictness
                     )
                 }
-                try preparePreview(
+                try await preparePreview(
                     from: draft,
                     mode: mode,
                     originalPrompt: trimmed,
@@ -512,7 +511,7 @@ final class AppModel: ObservableObject {
         mode: PlanDraftMode,
         originalPrompt: String,
         defaultStrictness: Strictness
-    ) throws {
+    ) async throws {
         if draft.needsClarification {
             let question = draft.clarificationQuestion
                 .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -523,7 +522,7 @@ final class AppModel: ObservableObject {
             )
         }
 
-        applicationCatalog = ApplicationCatalog.load()
+        let applicationCatalog = await ApplicationCatalogStore.shared.refresh()
         let presets = TargetPresetCatalog.matches(prompt: originalPrompt)
         let explicitStrictness = StrictnessInterpreter.explicitStrictness(in: originalPrompt)
         let strictness = explicitStrictness ?? defaultStrictness

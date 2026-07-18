@@ -35,7 +35,7 @@ struct OneTimePlanEditor: View {
         _endsAt = State(initialValue: plan.endsAt)
         _strictness = State(initialValue: plan.strictness)
         _startsImmediately = State(initialValue: isCreating)
-        _installedApplications = State(initialValue: ApplicationCatalog.load().applications)
+        _installedApplications = State(initialValue: [])
     }
 
     var body: some View {
@@ -77,6 +77,9 @@ struct OneTimePlanEditor: View {
                 applications: $applications,
                 installedApplications: installedApplications
             )
+        }
+        .task {
+            installedApplications = await ApplicationCatalogStore.shared.catalog().applications
         }
     }
 
@@ -210,7 +213,7 @@ struct RecurringPlanEditor: View {
         _startTime = State(initialValue: Self.dateForTime(in: plan))
         _durationMinutes = State(initialValue: plan.durationMinutes)
         _strictness = State(initialValue: plan.strictness)
-        _installedApplications = State(initialValue: ApplicationCatalog.load().applications)
+        _installedApplications = State(initialValue: [])
     }
 
     var body: some View {
@@ -314,6 +317,9 @@ struct RecurringPlanEditor: View {
         }
         .frame(minWidth: 650, minHeight: 700)
         .background(ChatPalette.canvasTop)
+        .task {
+            installedApplications = await ApplicationCatalogStore.shared.catalog().applications
+        }
     }
 
     private var durationDescription: String {

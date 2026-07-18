@@ -361,7 +361,7 @@ struct StrengthenSessionEditor: View {
         _applications = State(initialValue: session.plan.applications)
         _endsAt = State(initialValue: session.plan.endsAt)
         _strictness = State(initialValue: session.plan.strictness)
-        _installedApplications = State(initialValue: ApplicationCatalog.load().applications)
+        _installedApplications = State(initialValue: [])
     }
 
     var body: some View {
@@ -447,6 +447,9 @@ struct StrengthenSessionEditor: View {
         }
         .frame(minWidth: 650, minHeight: 700)
         .background(ChatPalette.canvasTop)
+        .task {
+            installedApplications = await ApplicationCatalogStore.shared.catalog().applications
+        }
     }
 
     private var allowedStrictness: [Strictness] {
