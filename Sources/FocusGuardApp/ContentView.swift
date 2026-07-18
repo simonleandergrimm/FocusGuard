@@ -588,6 +588,8 @@ struct ContentView: View {
                     Spacer()
                     Button("Discard") { model.discardPreview() }
                         .buttonStyle(.bordered)
+                    Button("Edit") { creatingPlan = plan }
+                        .buttonStyle(.bordered)
                     if model.helperInstalled {
                         Button("Activate block") { model.activatePreview() }
                             .buttonStyle(.borderedProminent)
@@ -654,6 +656,8 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                     Spacer()
                     Button("Discard") { model.discardRecurringPreview() }
+                        .buttonStyle(.bordered)
+                    Button("Edit") { creatingRecurringPlan = plan }
                         .buttonStyle(.bordered)
                     if model.helperInstalled {
                         Button("Activate schedule") { model.activateRecurringPreview() }
