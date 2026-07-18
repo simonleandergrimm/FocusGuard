@@ -56,6 +56,8 @@ A root-owned launchd helper:
 
 FocusGuard registers the main app as a login item on first launch so it can show status and recurring-block warnings. This can be disabled in Settings.
 
+FocusGuard assumes a single-user Mac: the helper is installed for the account that ran the setup (its user ID is fixed at install time), and only that account's applications are closed. Website blocks in `/etc/hosts` affect every account on the machine.
+
 ## Privacy and API use
 
 - Manual blocks remain entirely local.
@@ -82,6 +84,8 @@ Plain HTTP blocks reach the helper's reminder page directly. HTTPS authenticates
 In FocusGuard Settings, select **Export and show extension**. Then open the extensions page in Chrome, Brave, Edge, or another Chromium browser, enable Developer mode, choose **Load unpacked**, and select the folder FocusGuard opened.
 
 Website blocking still works without the extension; the browser will show its normal connection error for blocked HTTPS sites.
+
+**Secure DNS bypasses hosts-file blocking.** Browsers with Secure DNS / DNS over HTTPS enabled (Chrome's "Use secure DNS", Firefox's DoH) resolve names remotely and ignore `/etc/hosts`, which silently defeats website blocks in that browser. Install the extension (which does not depend on DNS) or turn off Secure DNS in the browser's settings. Application blocking is unaffected.
 
 ## Development
 

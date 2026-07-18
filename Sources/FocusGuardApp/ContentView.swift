@@ -2182,6 +2182,10 @@ struct SettingsView: View {
                     Spacer()
                     Button("Export and show extension") { revealBrowserExtension() }
                 }
+
+                Text("Browsers with Secure DNS (DNS over HTTPS) enabled bypass the hosts-file blocking entirely. Install the extension, or turn off Secure DNS in the browser, to keep website blocks reliable.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             HStack {
