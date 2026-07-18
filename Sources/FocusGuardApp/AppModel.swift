@@ -37,6 +37,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var helperInstalled = false
     @Published private(set) var helperState: HelperInstallationState = .missing
     @Published private(set) var helperHealth: HelperRuntimeHealth?
+    @Published private(set) var helperHealthUnreachable = false
     @Published private(set) var launchAtLoginDesired = LoginItemManager.isDesired
     @Published private(set) var loginItemState = LoginItemManager.state()
     @Published private(set) var backgroundStatusMessage = ""
@@ -51,6 +52,7 @@ final class AppModel: ObservableObject {
     private var backgroundMonitorTask: Task<Void, Never>?
     private var undoExpirationTask: Task<Void, Never>?
     private var automaticHelperRepairAttempted = false
+    private var consecutiveHealthFetchFailures = 0
 
     init() {
         let store = PolicyStore(fileURL: PolicyStore.defaultFileURL())
@@ -81,6 +83,9 @@ final class AppModel: ObservableObject {
         if let helperHealth {
             if helperHealth.activePlans == 0 { return "Helper healthy" }
             return "Helper healthy · \(helperHealth.activePlans) active"
+        }
+        if helperHealthUnreachable {
+            return "Helper is running, but its local status port (8765) is unreachable — another app may be using it."
         }
         return "Helper running"
     }
@@ -116,9 +121,16 @@ final class AppModel: ObservableObject {
                 self.refreshHelperStatus()
                 self.loginItemState = LoginItemManager.state()
                 self.attemptAutomaticHelperRepairIfNeeded()
-                self.helperHealth = self.helperInstalled
+                let health = self.helperInstalled
                     ? await HelperHealthClient.fetch()
                     : nil
+                self.helperHealth = health
+                if self.helperInstalled, health == nil {
+                    self.consecutiveHealthFetchFailures += 1
+                } else {
+                    self.consecutiveHealthFetchFailures = 0
+                }
+                self.helperHealthUnreachable = self.consecutiveHealthFetchFailures >= 3
                 try? await Task.sleep(for: .seconds(5))
             }
         }

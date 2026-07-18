@@ -31,6 +31,7 @@ private final class HelperEngine {
     private let landingPageServer: LandingPageServer
     private var lastDomains: Set<String>?
     private var lastTargets = Set<ProcessMatchTarget>()
+    private var cyclesSinceLogSizeCheck = 0
 
     init(configuration: HelperConfiguration) {
         self.configuration = configuration
@@ -44,7 +45,29 @@ private final class HelperEngine {
             autoreleasepool {
                 runCycle()
             }
+            capLogIfNeeded()
             Thread.sleep(forTimeInterval: 1)
+        }
+    }
+
+    /// launchd opens StandardOutPath without rotation, so an unattended
+    /// helper would grow /var/log/focusguard-helper.log forever. Once an
+    /// hour, truncate it back to zero when it exceeds the cap; the log fd is
+    /// append-mode, so the next write simply restarts at the top.
+    private func capLogIfNeeded() {
+        cyclesSinceLogSizeCheck += 1
+        guard cyclesSinceLogSizeCheck >= 3_600 else { return }
+        cyclesSinceLogSizeCheck = 0
+
+        var status = stat()
+        let logSizeLimit: off_t = 5 * 1_024 * 1_024
+        guard fstat(fileno(stdout), &status) == 0,
+              status.st_mode & S_IFMT == S_IFREG,
+              status.st_size > logSizeLimit
+        else { return }
+
+        if ftruncate(fileno(stdout), 0) == 0 {
+            log("log exceeded \(logSizeLimit) bytes; truncated")
         }
     }
 

@@ -149,9 +149,10 @@ final class LandingPageServer: @unchecked Sendable {
         let target = String(requestParts[1])
         let components = URLComponents(string: "http://focusguard.local\(target)")
         let queryHost = components?.queryItems?.first(where: { $0.name == "host" })?.value
+        let origin = allowedOrigin(from: lines)
 
         if target.hasPrefix("/api/check") {
-            return checkResponse(host: queryHost ?? "")
+            return checkResponse(host: queryHost ?? "", origin: origin)
         }
 
         if target.hasPrefix("/health") {
@@ -162,7 +163,7 @@ final class LandingPageServer: @unchecked Sendable {
                 "active_plans": snapshot.activePlans,
                 "blocked_domains": snapshot.blockedDomains,
                 "blocked_applications": snapshot.blockedApplications,
-            ])
+            ], origin: origin)
         }
 
         let requestedHost: String
@@ -185,9 +186,9 @@ final class LandingPageServer: @unchecked Sendable {
         )
     }
 
-    private func checkResponse(host: String) -> Data {
+    private func checkResponse(host: String, origin: String?) -> Data {
         guard let block = policy.block(for: host) else {
-            return jsonResponse(["blocked": false])
+            return jsonResponse(["blocked": false], origin: origin)
         }
 
         return jsonResponse([
@@ -195,7 +196,7 @@ final class LandingPageServer: @unchecked Sendable {
             "host": block.host,
             "title": block.title,
             "ends_at_ms": Int(block.endsAt.timeIntervalSince1970 * 1_000),
-        ])
+        ], origin: origin)
     }
 
     private func hostHeader(from lines: [String]) -> String? {
@@ -204,13 +205,25 @@ final class LandingPageServer: @unchecked Sendable {
         return value.split(separator: ":", maxSplits: 1).first.map(String.init)
     }
 
-    private func jsonResponse(_ object: [String: Any]) -> Data {
+    /// Cross-origin reads are limited to browser extensions: plan titles can
+    /// contain personal detail, and a blanket `*` would let any open website
+    /// read them. Unpacked extension IDs differ per machine, so the origin
+    /// scheme is the discriminator rather than an ID allowlist.
+    private func allowedOrigin(from lines: [String]) -> String? {
+        guard let line = lines.first(where: { $0.lowercased().hasPrefix("origin:") }) else { return nil }
+        let value = line.dropFirst(7).trimmingCharacters(in: .whitespacesAndNewlines)
+        let allowedSchemes = ["chrome-extension://", "moz-extension://"]
+        guard allowedSchemes.contains(where: value.lowercased().hasPrefix) else { return nil }
+        return value
+    }
+
+    private func jsonResponse(_ object: [String: Any], origin: String? = nil) -> Data {
         let body = (try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])) ?? Data("{}".utf8)
         return httpResponse(
             status: "200 OK",
             contentType: "application/json; charset=utf-8",
             body: body,
-            additionalHeaders: ["Access-Control-Allow-Origin": "*"]
+            additionalHeaders: origin.map { ["Access-Control-Allow-Origin": $0] } ?? [:]
         )
     }
 
