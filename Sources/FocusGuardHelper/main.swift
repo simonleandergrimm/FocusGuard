@@ -32,7 +32,7 @@ private final class HelperEngine {
     private let statisticsRecorder: StatisticsRecorder
     private var lastDomains: Set<String>?
     private var lastTargets = Set<ProcessMatchTarget>()
-    private var lastDisplayNames: [String: String] = [:]
+    private var lastDisplayNames: [ProcessMatchTarget: String] = [:]
     private var cyclesSinceLogSizeCheck = 0
     private var cyclesSinceStatisticsFlush = 0
 
@@ -116,7 +116,12 @@ private final class HelperEngine {
 
             lastTargets = targets
             lastDisplayNames = Dictionary(
-                activePlans.flatMap(\.applications).map { ($0.executableName, $0.displayName) },
+                activePlans.flatMap(\.applications).map {
+                    (
+                        ProcessMatchTarget(executableName: $0.executableName, bundleName: $0.bundleName),
+                        $0.displayName
+                    )
+                },
                 uniquingKeysWith: { first, _ in first }
             )
             terminateBlockedApplications(targets: targets)
@@ -158,7 +163,7 @@ private final class HelperEngine {
             guard process.pid != getpid() else { continue }
             if Darwin.kill(process.pid, SIGKILL) == 0 {
                 statisticsRecorder.recordApplicationTermination(
-                    displayName: lastDisplayNames[process.executableName] ?? process.executableName
+                    displayName: lastDisplayNames[process.matchTarget] ?? process.executableName
                 )
                 log("force-closed \(process.executableName) immediately (pid \(process.pid))")
             } else if errno != ESRCH {

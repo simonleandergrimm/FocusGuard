@@ -96,7 +96,7 @@ struct SettingsView: View {
                     Button("Export and show extension") { revealBrowserExtension() }
                 }
 
-                Text("Browsers with Secure DNS (DNS over HTTPS) enabled bypass the hosts-file blocking entirely. Install the extension, or turn off Secure DNS in the browser, to keep website blocks reliable.")
+                Text("Browser DNS behavior varies. Install the extension for reliable HTTPS and subdomain coverage; if a browser still bypasses a block, review its Secure DNS settings.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -147,4 +147,3 @@ struct SettingsView: View {
         }
     }
 }
-

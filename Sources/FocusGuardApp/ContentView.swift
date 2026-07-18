@@ -299,12 +299,12 @@ struct ContentView: View {
 
     @ViewBuilder
     private var helperBadge: some View {
-        if model.helperState.needsRepair || model.isInstallingHelper {
+        if model.helperState.needsRepair || model.isInstallingHelper || model.helperHealthUnreachable {
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.caption)
                     .foregroundStyle(ChatPalette.warning)
-                Text(model.isInstallingHelper ? "Helper setup in progress" : model.helperState.description)
+                Text(helperBadgeText)
                     .font(.caption.weight(.semibold))
 
                 Image(systemName: "info.circle")
@@ -312,15 +312,17 @@ struct ContentView: View {
                     .foregroundStyle(.secondary)
                     .help(helperRecoveryHelp)
 
-                Button(
-                    model.isInstallingHelper
-                        ? "Working…"
-                        : model.helperActionTitle
-                ) {
-                    model.installHelper()
+                if model.helperState.needsRepair || model.isInstallingHelper {
+                    Button(
+                        model.isInstallingHelper
+                            ? "Working…"
+                            : model.helperActionTitle
+                    ) {
+                        model.installHelper()
+                    }
+                    .buttonStyle(.link)
+                    .disabled(model.isInstallingHelper)
                 }
-                .buttonStyle(.link)
-                .disabled(model.isInstallingHelper)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -336,6 +338,9 @@ struct ContentView: View {
         if model.isInstallingHelper {
             return "Approve the macOS administrator dialog if it is waiting. FocusGuard will check the helper again automatically."
         }
+        if model.helperHealthUnreachable {
+            return "The helper is running, but FocusGuard cannot reach its local status service on port 8765. Quit any app using that port; FocusGuard will check again automatically."
+        }
         switch model.helperState {
         case .missing:
             return "Click Set up, then approve the macOS administrator dialog to install the background helper."
@@ -346,6 +351,12 @@ struct ContentView: View {
         case .healthy:
             return "The helper is healthy."
         }
+    }
+
+    private var helperBadgeText: String {
+        if model.isInstallingHelper { return "Helper setup in progress" }
+        if model.helperHealthUnreachable { return "Helper connection needs attention" }
+        return model.helperState.description
     }
 
     private var claudeFMButton: some View {
@@ -772,4 +783,3 @@ private enum PlanPane: Hashable {
     case oneTime
     case recurring
 }
-

@@ -179,7 +179,6 @@ struct OneTimePlanEditor: View {
         }
     }
 }
-
 struct RecurringPlanEditor: View {
     let originalPlan: RecurringBlockPlan
     let isCreating: Bool
@@ -582,4 +581,3 @@ struct ManualTargetsEditor: View {
         entryMessage = nil
     }
 }
-

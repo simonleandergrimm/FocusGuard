@@ -87,7 +87,6 @@ struct RecurringPlanRow: View {
         return "Waiting for the next scheduled day"
     }
 }
-
 struct PlanRow: View {
     let plan: BlockPlan
     let now: Date
@@ -202,4 +201,3 @@ struct UnlockControl: View {
         return "\(minutes)m \(seconds)s"
     }
 }
-

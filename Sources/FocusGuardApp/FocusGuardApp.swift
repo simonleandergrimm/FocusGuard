@@ -21,7 +21,7 @@ struct FocusGuardApp: App {
     }
 
     var body: some Scene {
-        WindowGroup(id: Self.mainWindowID) {
+        Window("FocusGuard", id: Self.mainWindowID) {
             ContentView(model: model, interfaceZoom: $interfaceZoom)
                 .frame(minWidth: 820, minHeight: 650)
                 .background(WindowAppearanceConfigurator())

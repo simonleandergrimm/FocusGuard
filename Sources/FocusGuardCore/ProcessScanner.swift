@@ -3,11 +3,18 @@ import Foundation
 
 public struct RunningProcess: Equatable, Sendable {
     public let pid: pid_t
-    public let executableName: String
+    public let matchTarget: ProcessMatchTarget
+
+    public var executableName: String { matchTarget.executableName }
 
     public init(pid: pid_t, executableName: String) {
         self.pid = pid
-        self.executableName = executableName
+        self.matchTarget = ProcessMatchTarget(executableName: executableName)
+    }
+
+    public init(pid: pid_t, matchTarget: ProcessMatchTarget) {
+        self.pid = pid
+        self.matchTarget = matchTarget
     }
 }
 
@@ -58,7 +65,7 @@ public enum ProcessScanner {
                 String(cString: buffer.baseAddress!)
             }
             guard let target = target(matching: path, in: targets) else { return nil }
-            return RunningProcess(pid: pid, executableName: target.executableName)
+            return RunningProcess(pid: pid, matchTarget: target)
         }
     }
 
@@ -67,10 +74,13 @@ public enum ProcessScanner {
         in targets: Set<ProcessMatchTarget>
     ) -> ProcessMatchTarget? {
         let executableName = URL(fileURLWithPath: path).lastPathComponent
-        return targets.first { target in
-            guard target.executableName == executableName else { return false }
-            guard let bundleName = target.bundleName else { return true }
+        let executableTargets = targets.filter { $0.executableName == executableName }
+        if let bundleMatch = executableTargets.first(where: { target in
+            guard let bundleName = target.bundleName else { return false }
             return path.contains("/\(bundleName)/")
+        }) {
+            return bundleMatch
         }
+        return executableTargets.first { $0.bundleName == nil }
     }
 }

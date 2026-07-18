@@ -547,11 +547,22 @@ func processScannerFindsCurrentExecutableForCurrentUser() {
 func processTargetMatchingRequiresBundlePathWhenKnown() {
     let slack = ProcessMatchTarget(executableName: "Slack", bundleName: "Slack.app")
     let bareElectron = ProcessMatchTarget(executableName: "Electron")
+    let slackFallback = ProcessMatchTarget(executableName: "Slack")
+
+    let runningSlack = RunningProcess(pid: 42, matchTarget: slack)
+    #expect(runningSlack.matchTarget == slack)
+    #expect(runningSlack.executableName == "Slack")
 
     #expect(
         ProcessScanner.target(
             matching: "/Applications/Slack.app/Contents/MacOS/Slack",
             in: [slack]
+        ) == slack
+    )
+    #expect(
+        ProcessScanner.target(
+            matching: "/Applications/Slack.app/Contents/MacOS/Slack",
+            in: [slackFallback, slack]
         ) == slack
     )
     #expect(

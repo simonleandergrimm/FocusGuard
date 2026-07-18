@@ -14,7 +14,6 @@ struct ActiveSessionSnapshot: Identifiable {
         plan.domains.count + plan.applications.count
     }
 }
-
 struct ActiveSessionsRail: View {
     @ObservedObject var model: AppModel
     @State private var selectedSession: ActiveSessionSnapshot?
@@ -531,4 +530,3 @@ struct StrengthenSessionEditor: View {
         }
     }
 }
-

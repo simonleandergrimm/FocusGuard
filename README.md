@@ -85,7 +85,7 @@ In FocusGuard Settings, select **Export and show extension**. Then open the exte
 
 Website blocking still works without the extension; the browser will show its normal connection error for blocked HTTPS sites.
 
-**Secure DNS bypasses hosts-file blocking.** Browsers with Secure DNS / DNS over HTTPS enabled (Chrome's "Use secure DNS", Firefox's DoH) resolve names remotely and ignore `/etc/hosts`, which silently defeats website blocks in that browser. Install the extension (which does not depend on DNS) or turn off Secure DNS in the browser's settings. Application blocking is unaffected.
+Browser DNS behavior varies. The Chromium extension gives FocusGuard reliable coverage for HTTPS and subdomains even when browser DNS settings or cached connections limit hosts-file blocking. For best results, install the extension; if a browser still bypasses a block, review its Secure DNS settings. Application blocking is unaffected.
 
 ## Development
 
