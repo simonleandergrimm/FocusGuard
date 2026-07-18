@@ -7,21 +7,21 @@ struct MenuBarStatusLabel: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 60)) { context in
-            Image(systemName: model.hasActiveSession(at: context.date) ? "shield.fill" : "shield")
-        }
+        Image(systemName: model.hasActiveSession(at: Date()) ? "shield.fill" : "shield")
     }
 }
 
 /// The menu bar dropdown: active sessions with remaining time, plus
 /// shortcuts to the main window and Settings.
 struct MenuBarStatusView: View {
+    private static let timelineStart = Date()
+
     @ObservedObject var model: AppModel
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
+        TimelineView(.periodic(from: Self.timelineStart, by: 1)) { context in
             VStack(alignment: .leading, spacing: 12) {
                 let sessions = model.activeSessionSummaries(at: context.date)
 

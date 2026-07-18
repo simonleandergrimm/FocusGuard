@@ -29,6 +29,7 @@ private final class WindowAppearanceView: NSView {
         window.titlebarAppearsTransparent = true
         window.titlebarSeparatorStyle = .none
         window.backgroundColor = .white
+        window.isReleasedWhenClosed = false
         window.toolbar?.showsBaselineSeparator = false
     }
 }
