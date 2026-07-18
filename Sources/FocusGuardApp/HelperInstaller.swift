@@ -96,10 +96,6 @@ struct HelperInstaller: Sendable {
         }
     }
 
-    static func isInstalled() -> Bool {
-        status().isOperational
-    }
-
     static func status() -> HelperInstallationState {
         let fileManager = FileManager.default
         guard fileManager.isExecutableFile(atPath: installedExecutablePath),

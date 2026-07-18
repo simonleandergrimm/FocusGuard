@@ -74,10 +74,6 @@ final class AppModel: ObservableObject {
         synchronizeRecurringWarnings()
     }
 
-    var relevantPlans: [BlockPlan] {
-        plans.filter { Date() < $0.effectiveEnd }.sorted { $0.startsAt < $1.startsAt }
-    }
-
     var helperStatusText: String {
         guard helperState == .healthy else { return helperState.description }
         if let helperHealth {
