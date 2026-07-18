@@ -29,13 +29,28 @@ private struct HelperConfiguration {
 private final class HelperEngine {
     private let configuration: HelperConfiguration
     private let landingPageServer: LandingPageServer
+    private let statisticsRecorder: StatisticsRecorder
     private var lastDomains: Set<String>?
     private var lastTargets = Set<ProcessMatchTarget>()
+    private var lastDisplayNames: [String: String] = [:]
     private var cyclesSinceLogSizeCheck = 0
+    private var cyclesSinceStatisticsFlush = 0
 
     init(configuration: HelperConfiguration) {
         self.configuration = configuration
-        self.landingPageServer = LandingPageServer(helperVersion: configuration.helperVersion)
+        let statisticsStore = BlockStatisticsStore(
+            fileURL: configuration.policyURL
+                .deletingLastPathComponent()
+                .appendingPathComponent("stats.json")
+        )
+        let recorder = StatisticsRecorder(store: statisticsStore)
+        self.statisticsRecorder = recorder
+        self.landingPageServer = LandingPageServer(
+            helperVersion: configuration.helperVersion,
+            onWebsiteHit: { domain in
+                recorder.recordWebsiteHit(domain: domain)
+            }
+        )
     }
 
     func runForever() -> Never {
@@ -45,8 +60,20 @@ private final class HelperEngine {
             autoreleasepool {
                 runCycle()
             }
+            flushStatisticsIfNeeded()
             capLogIfNeeded()
             Thread.sleep(forTimeInterval: 1)
+        }
+    }
+
+    private func flushStatisticsIfNeeded() {
+        cyclesSinceStatisticsFlush += 1
+        guard cyclesSinceStatisticsFlush >= 30 else { return }
+        cyclesSinceStatisticsFlush = 0
+        do {
+            try statisticsRecorder.flushIfDirty()
+        } catch {
+            log("could not write statistics: \(error.localizedDescription)")
         }
     }
 
@@ -88,6 +115,10 @@ private final class HelperEngine {
             }
 
             lastTargets = targets
+            lastDisplayNames = Dictionary(
+                activePlans.flatMap(\.applications).map { ($0.executableName, $0.displayName) },
+                uniquingKeysWith: { first, _ in first }
+            )
             terminateBlockedApplications(targets: targets)
         } catch {
             // Keep enforcing the last valid state if the policy is briefly unreadable.
@@ -126,6 +157,9 @@ private final class HelperEngine {
         for process in matchingProcesses {
             guard process.pid != getpid() else { continue }
             if Darwin.kill(process.pid, SIGKILL) == 0 {
+                statisticsRecorder.recordApplicationTermination(
+                    displayName: lastDisplayNames[process.executableName] ?? process.executableName
+                )
                 log("force-closed \(process.executableName) immediately (pid \(process.pid))")
             } else if errno != ESRCH {
                 log("could not force-close \(process.executableName) (pid \(process.pid)): errno \(errno)")

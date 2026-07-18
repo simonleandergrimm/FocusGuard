@@ -440,6 +440,48 @@ func hostsFileWriteReplacesFileAtomicallyWithExpectedPermissions() throws {
 }
 
 @Test
+func blockStatisticsRoundTripThroughStoreWithReadablePermissions() throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("FocusGuardStatsTests-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let store = BlockStatisticsStore(fileURL: directory.appendingPathComponent("stats.json"))
+
+    #expect(try store.load() == nil)
+
+    let statistics = BlockStatistics(
+        websiteHits: ["reddit.com": 4, "x.com": 1],
+        applicationTerminations: ["Slack": 2],
+        since: Date(timeIntervalSince1970: 1_000),
+        updatedAt: Date(timeIntervalSince1970: 2_000)
+    )
+    try store.save(statistics)
+
+    #expect(try store.load() == statistics)
+    let attributes = try FileManager.default.attributesOfItem(atPath: store.fileURL.path)
+    #expect((attributes[.posixPermissions] as? NSNumber)?.uint16Value == 0o644)
+}
+
+@Test
+func activeWebsiteBlockReportsTheMatchedPlanDomain() {
+    let now = Date(timeIntervalSince1970: 10_000)
+    let plan = BlockPlan(
+        title: "No Reddit",
+        domains: ["reddit.com"],
+        applications: [],
+        startsAt: now.addingTimeInterval(-60),
+        endsAt: now.addingTimeInterval(600),
+        strictness: .locked,
+        summary: ""
+    )
+    let document = BlockScheduleDocument(plans: [plan])
+
+    let block = document.activeWebsiteBlock(for: "old.reddit.com", at: now)
+    #expect(block?.host == "old.reddit.com")
+    #expect(block?.blockedDomain == "reddit.com")
+}
+
+@Test
 func strictnessControlsEffectiveEnd() {
     let start = Date(timeIntervalSince1970: 1_000)
     let end = start.addingTimeInterval(3_600)

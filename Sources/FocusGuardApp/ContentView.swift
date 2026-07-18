@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var editingRecurringPlan: RecurringBlockPlan?
     @State private var creatingPlan: BlockPlan?
     @State private var creatingRecurringPlan: RecurringBlockPlan?
+    @State private var showingStatistics = false
 
     private var zoomScale: CGFloat {
         CGFloat(min(max(interfaceZoom, 0.8), 1.6))
@@ -111,6 +112,9 @@ struct ContentView: View {
                 model.prepareManualPreview(newPlan)
             }
         }
+        .sheet(isPresented: $showingStatistics) {
+            StatisticsView()
+        }
     }
 
     private var sidebarLayout: some View {
@@ -176,6 +180,17 @@ struct ContentView: View {
             claudeFMButton
 
             PomodoroSidebarControl(timer: pomodoro)
+
+            Button {
+                showingStatistics = true
+            } label: {
+                Label("Statistics", systemImage: "chart.bar")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(ChatPalette.surfaceRaised.opacity(0.82), in: RoundedRectangle(cornerRadius: 10))
 
             Button {
                 openSettings()

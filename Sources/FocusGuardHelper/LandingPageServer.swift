@@ -42,10 +42,15 @@ final class LandingPageServer: @unchecked Sendable {
     private let policy = LandingPagePolicy()
     private let queue = DispatchQueue(label: "FocusGuard.LandingPageServer", qos: .utility)
     private let helperVersion: Int
+    private let onWebsiteHit: (@Sendable (String) -> Void)?
     private var listeners: [UInt16: NWListener] = [:]
 
-    init(helperVersion: Int = FocusGuardHelperProtocol.currentVersion) {
+    init(
+        helperVersion: Int = FocusGuardHelperProtocol.currentVersion,
+        onWebsiteHit: (@Sendable (String) -> Void)? = nil
+    ) {
         self.helperVersion = helperVersion
+        self.onWebsiteHit = onWebsiteHit
     }
 
     func update(activePlans: [BlockPlan]) {
@@ -174,6 +179,13 @@ final class LandingPageServer: @unchecked Sendable {
         }
 
         let block = policy.block(for: requestedHost)
+        // Count only top-level landing-page renders: hosts-file redirects
+        // arrive as "GET /" with a Host header and extension redirects as
+        // "/blocked?host=…". Asset requests such as /favicon.ico would
+        // otherwise double-count a single blocked visit.
+        if let block, target == "/" || target.hasPrefix("/blocked") {
+            onWebsiteHit?(block.blockedDomain)
+        }
         let html = LandingPageHTML.render(host: requestedHost, block: block)
         return httpResponse(
             status: "200 OK",

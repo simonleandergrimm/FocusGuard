@@ -2,6 +2,9 @@ import Foundation
 
 public struct WebsiteBlockContext: Equatable, Sendable {
     public let host: String
+    /// The plan domain that matched, so statistics aggregate under
+    /// `reddit.com` rather than each individual subdomain.
+    public let blockedDomain: String
     public let title: String
     public let summary: String
     public let endsAt: Date
@@ -9,12 +12,14 @@ public struct WebsiteBlockContext: Equatable, Sendable {
 
     public init(
         host: String,
+        blockedDomain: String,
         title: String,
         summary: String,
         endsAt: Date,
         strictness: Strictness
     ) {
         self.host = host
+        self.blockedDomain = blockedDomain
         self.title = title
         self.summary = summary
         self.endsAt = endsAt
@@ -37,6 +42,7 @@ public extension BlockScheduleDocument {
 
                 return WebsiteBlockContext(
                     host: normalizedHost,
+                    blockedDomain: domain,
                     title: plan.title,
                     summary: plan.summary,
                     endsAt: plan.effectiveEnd,

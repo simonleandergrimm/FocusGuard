@@ -35,29 +35,10 @@ public enum HostsFileEditor {
         return result
     }
 
-    /// Replaces the file at `path` atomically: the content is written to a
-    /// temporary file in the same directory (so rename(2) stays on one
-    /// filesystem) with mode 644, then renamed over the destination. Readers
-    /// never observe a truncated or partially written file.
+    /// Replaces the file at `path` atomically (temp file + rename(2), mode
+    /// 644) so a crash mid-write can never leave a truncated hosts file.
     public static func write(_ content: String, toPath path: String) throws {
-        let destination = URL(fileURLWithPath: path)
-        let temporary = destination
-            .deletingLastPathComponent()
-            .appendingPathComponent(".\(destination.lastPathComponent).focusguard.tmp")
-
-        guard FileManager.default.createFile(
-            atPath: temporary.path,
-            contents: Data(content.utf8),
-            attributes: [.posixPermissions: 0o644]
-        ) else {
-            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-        }
-
-        guard rename(temporary.path, destination.path) == 0 else {
-            let renameError = POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-            try? FileManager.default.removeItem(at: temporary)
-            throw renameError
-        }
+        try AtomicFile.write(Data(content.utf8), toPath: path)
     }
 
     private static func expandedDomains(_ domains: Set<String>) -> [String] {
