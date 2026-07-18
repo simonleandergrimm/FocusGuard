@@ -20,11 +20,11 @@ struct RecurringPlanRow: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 9) {
-                    Text(plan.title).font(.headline)
+                    Text(plan.title).font(InterfaceTypography.itemTitle)
                     StrictnessBadge(strictness: plan.strictness)
                 }
                 Text(statusText)
-                    .font(.callout)
+                    .font(InterfaceTypography.metadata)
                     .foregroundStyle(.secondary)
             }
 
@@ -32,9 +32,9 @@ struct RecurringPlanRow: View {
 
             VStack(alignment: .trailing, spacing: 4) {
                 Text(plan.daysDescription)
-                    .font(.caption.weight(.semibold))
+                    .font(InterfaceTypography.emphasized)
                 Text("\(plan.startTimeDescription) · \(plan.durationDescription)")
-                    .font(.caption)
+                    .font(InterfaceTypography.metadata)
                     .foregroundStyle(.secondary)
             }
 
@@ -99,18 +99,18 @@ struct PlanRow: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 9) {
-                    Text(plan.title).font(.headline)
+                    Text(plan.title).font(InterfaceTypography.itemTitle)
                     StrictnessBadge(strictness: plan.strictness)
                 }
                 Text(statusText)
-                    .font(.callout)
+                    .font(InterfaceTypography.metadata)
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
 
             Text("\(plan.domains.count + plan.applications.count) targets")
-                .font(.caption)
+                .font(InterfaceTypography.metadata)
                 .foregroundStyle(.secondary)
 
             if let editAction {
@@ -158,7 +158,7 @@ struct UnlockControl: View {
             if plan.endRequestedAt != nil {
                 TimelineView(.periodic(from: Date(), by: 1)) { context in
                     Label("Unlocking in \(remainingDescription(at: context.date))", systemImage: "hourglass")
-                        .font(.caption.weight(.semibold))
+                        .font(InterfaceTypography.emphasized)
                         .foregroundStyle(plan.strictness == .locked ? ChatPalette.warning : ChatPalette.accent)
                 }
             } else {

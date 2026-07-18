@@ -11,6 +11,7 @@ struct FocusGuardApp: App {
 
     @StateObject private var model: AppModel
     @AppStorage("interfaceZoom") private var interfaceZoom = Self.defaultInterfaceZoom
+    @AppStorage("sidebarVisible") private var sidebarVisible = true
     @AppStorage("showMenuBarStatus") private var showMenuBarStatus = true
 
     init() {
@@ -30,6 +31,11 @@ struct FocusGuardApp: App {
         .defaultSize(width: 1_120, height: 760)
         .commands {
             CommandGroup(after: .toolbar) {
+                Button(sidebarVisible ? "Hide Sidebar" : "Show Sidebar") {
+                    sidebarVisible.toggle()
+                }
+                .keyboardShortcut("s", modifiers: [.command, .control])
+
                 Divider()
                 Button("Zoom In") {
                     interfaceZoom = min(Self.maximumInterfaceZoom, interfaceZoom + 0.1)

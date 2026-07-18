@@ -36,7 +36,7 @@ struct PomodoroSidebarControl: View {
                         }
 
                         Text(timer.timeDescription(at: context.date))
-                            .font(.system(.callout, design: .monospaced).weight(.semibold))
+                            .font(.system(.body, design: .monospaced).weight(.semibold))
                             .foregroundStyle(timer.isRunning ? ChatPalette.accent : .secondary)
                             .monospacedDigit()
                     }

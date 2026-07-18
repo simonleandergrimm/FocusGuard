@@ -2,6 +2,17 @@ import AppKit
 import FocusGuardCore
 import SwiftUI
 
+/// A deliberately small type scale shared by the main workspace and sidebar.
+/// macOS body and headline styles are both 13 pt; weight and color provide the
+/// hierarchy without making adjacent parts of the interface feel mismatched.
+enum InterfaceTypography {
+    static let body = Font.body
+    static let emphasized = Font.body.weight(.semibold)
+    static let itemTitle = Font.headline
+    static let metadata = Font.body
+    static let badge = Font.system(.caption2, design: .rounded).weight(.bold)
+}
+
 extension RecurringBlockPlan {
     var daysDescription: String {
         let daySet = Set(weekdays)
@@ -106,7 +117,7 @@ struct StrictnessBadge: View {
 
     var body: some View {
         Text(strictness.displayName.uppercased())
-            .font(.system(size: 9, weight: .bold, design: .rounded))
+            .font(InterfaceTypography.badge)
             .tracking(0.8)
             .padding(.horizontal, 8)
             .padding(.vertical, 5)

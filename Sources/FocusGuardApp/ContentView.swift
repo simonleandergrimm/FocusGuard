@@ -15,6 +15,7 @@ struct ContentView: View {
     @State private var creatingPlan: BlockPlan?
     @State private var creatingRecurringPlan: RecurringBlockPlan?
     @State private var showingStatistics = false
+    @AppStorage("sidebarVisible") private var sidebarVisible = true
 
     private var zoomScale: CGFloat {
         CGFloat(min(max(interfaceZoom, 0.8), 1.6))
@@ -33,7 +34,7 @@ struct ContentView: View {
     }
 
     private var supportingFont: Font {
-        .system(size: 14 * zoomScale)
+        InterfaceTypography.body
     }
 
     var body: some View {
@@ -56,6 +57,7 @@ struct ContentView: View {
                 )
             }
         }
+        .font(InterfaceTypography.body)
         .dynamicTypeSize(interfaceTypeSize)
         .preferredColorScheme(.light)
         .overlay(alignment: .bottom) {
@@ -119,20 +121,30 @@ struct ContentView: View {
 
     private var sidebarLayout: some View {
         HStack(spacing: 0) {
-            sidebar
-
-            VStack(alignment: .center, spacing: 24) {
-                brand(fontSize: 30, centered: true)
-                    .padding(.top, 14 * zoomScale)
-                contentScrollView
+            if sidebarVisible {
+                sidebar
+                    .transition(.move(edge: .leading).combined(with: .opacity))
             }
-            .padding(.horizontal, 36 * zoomScale)
-            .padding(.top, 30 * zoomScale)
-            .padding(.bottom, 22 * zoomScale)
-            .frame(maxWidth: 1_020, maxHeight: .infinity, alignment: .top)
-            .frame(maxWidth: .infinity, alignment: .top)
+
+            ZStack(alignment: .topLeading) {
+                VStack(alignment: .center, spacing: 24) {
+                    reflectionHeader(fontSize: 30, centered: true)
+                        .padding(.top, 14 * zoomScale)
+                    contentScrollView
+                }
+                .padding(.horizontal, 36 * zoomScale)
+                .padding(.top, 30 * zoomScale)
+                .padding(.bottom, 22 * zoomScale)
+                .frame(maxWidth: 1_020, maxHeight: .infinity, alignment: .top)
+                .frame(maxWidth: .infinity, alignment: .top)
+
+                sidebarToggleButton
+                    .padding(.leading, 18 * zoomScale)
+                    .padding(.top, 18 * zoomScale)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .animation(.snappy, value: sidebarVisible)
     }
 
     private var compactLayout: some View {
@@ -140,9 +152,12 @@ struct ContentView: View {
             header
 
             HStack(alignment: .top, spacing: 18) {
-                ActiveSessionsRail(model: model)
-                    .frame(width: 238 * zoomScale)
-                    .frame(maxHeight: .infinity, alignment: .top)
+                if sidebarVisible {
+                    ActiveSessionsRail(model: model)
+                        .frame(width: 238 * zoomScale)
+                        .frame(maxHeight: .infinity, alignment: .top)
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                }
 
                 contentScrollView
             }
@@ -151,6 +166,7 @@ struct ContentView: View {
         .padding(30 * zoomScale)
         .frame(maxWidth: 1_200, maxHeight: .infinity)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(.snappy, value: sidebarVisible)
     }
 
     private var contentScrollView: some View {
@@ -207,6 +223,7 @@ struct ContentView: View {
         .frame(width: 252 * zoomScale)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(ChatPalette.sidebar.opacity(0.78))
+        .font(InterfaceTypography.body)
         .overlay(alignment: .trailing) {
             Rectangle()
                 .fill(ChatPalette.border)
@@ -256,7 +273,9 @@ struct ContentView: View {
 
     private var header: some View {
         HStack(alignment: .top) {
-            brand(fontSize: 28)
+            sidebarToggleButton
+
+            reflectionHeader(fontSize: 28)
 
             Spacer()
 
@@ -283,18 +302,30 @@ struct ContentView: View {
         }
     }
 
-    private func brand(fontSize: CGFloat, centered: Bool = false) -> some View {
-        VStack(alignment: centered ? .center : .leading, spacing: 7 * zoomScale) {
-            Label("FOCUSGUARD", systemImage: "shield.lefthalf.filled")
-                .font(.system(size: 12 * zoomScale, weight: .bold, design: .rounded))
-                .tracking(1.8)
-                .foregroundStyle(ChatPalette.accent)
-            Text("What do you want to do,\non reflection?")
-                .font(.system(size: fontSize * zoomScale, weight: .semibold, design: .rounded))
-                .tracking(-0.8)
-                .multilineTextAlignment(centered ? .center : .leading)
-                .fixedSize(horizontal: false, vertical: true)
+    private func reflectionHeader(fontSize: CGFloat, centered: Bool = false) -> some View {
+        Text("What do you want to do,\non reflection?")
+            .font(.system(size: fontSize * zoomScale, weight: .semibold, design: .rounded))
+            .tracking(-0.8)
+            .multilineTextAlignment(centered ? .center : .leading)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var sidebarToggleButton: some View {
+        Button {
+            withAnimation(.snappy) {
+                sidebarVisible.toggle()
+            }
+        } label: {
+            Image(systemName: "sidebar.left")
+                .font(InterfaceTypography.emphasized)
+                .foregroundStyle(.secondary)
+                .frame(width: 30, height: 30)
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .background(ChatPalette.surfaceRaised.opacity(0.78), in: RoundedRectangle(cornerRadius: 8))
+        .help(sidebarVisible ? "Hide Sidebar (⌃⌘S)" : "Show Sidebar (⌃⌘S)")
+        .accessibilityLabel(sidebarVisible ? "Hide Sidebar" : "Show Sidebar")
     }
 
     @ViewBuilder
@@ -302,13 +333,13 @@ struct ContentView: View {
         if model.helperState.needsRepair || model.isInstallingHelper || model.helperHealthUnreachable {
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.caption)
+                    .font(InterfaceTypography.metadata)
                     .foregroundStyle(ChatPalette.warning)
                 Text(helperBadgeText)
-                    .font(.caption.weight(.semibold))
+                    .font(InterfaceTypography.emphasized)
 
                 Image(systemName: "info.circle")
-                    .font(.caption)
+                    .font(InterfaceTypography.metadata)
                     .foregroundStyle(.secondary)
                     .help(helperRecoveryHelp)
 

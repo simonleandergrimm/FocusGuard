@@ -28,11 +28,11 @@ struct ActiveSessionsRail: View {
                         .fill(sessions.isEmpty ? ChatPalette.secondaryText : ChatPalette.accent)
                         .frame(width: 8, height: 8)
                     Text("ACTIVE NOW")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .font(InterfaceTypography.badge)
                         .tracking(1.1)
                     Spacer()
                     Text("\(sessions.count)")
-                        .font(.caption.weight(.semibold))
+                        .font(InterfaceTypography.metadata)
                         .foregroundStyle(.secondary)
                 }
 
@@ -44,9 +44,9 @@ struct ActiveSessionsRail: View {
                             .font(.title2)
                             .foregroundStyle(ChatPalette.secondaryText)
                         Text("No active sessions")
-                            .font(.callout.weight(.semibold))
+                            .font(InterfaceTypography.itemTitle)
                         Text("Current one-time and recurring blocks will appear here.")
-                            .font(.caption)
+                            .font(InterfaceTypography.metadata)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -124,7 +124,7 @@ struct ActiveSessionCard: View {
         VStack(alignment: .leading, spacing: 9) {
             HStack {
                 Text(session.source.uppercased())
-                    .font(.system(size: 9, weight: .bold))
+                    .font(InterfaceTypography.badge)
                     .tracking(0.8)
                     .foregroundStyle(ChatPalette.accent)
                 Spacer()
@@ -132,7 +132,7 @@ struct ActiveSessionCard: View {
             }
 
             Text(session.title)
-                .font(.callout.weight(.semibold))
+                .font(InterfaceTypography.itemTitle)
                 .lineLimit(2)
 
             Label(
@@ -141,12 +141,12 @@ struct ActiveSessionCard: View {
                     : "Unlocking in \(remainingDescription)",
                 systemImage: session.plan.endRequestedAt == nil ? "clock" : "hourglass"
             )
-            .font(.caption)
+            .font(InterfaceTypography.metadata)
             .foregroundStyle(session.plan.endRequestedAt == nil ? .secondary : ChatPalette.warning)
 
             HStack {
                 Text("\(session.targetCount) \(session.targetCount == 1 ? "target" : "targets")")
-                    .font(.caption2)
+                    .font(InterfaceTypography.metadata)
                     .foregroundStyle(.tertiary)
                 Spacer()
                 Image(systemName: "chevron.right")
