@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var apiKey = ""
     @State private var modelName = ModelSettings.current()
     @State private var statusMessage = ""
+    @AppStorage("showMenuBarStatus") private var showMenuBarStatus = true
 
     var body: some View {
         Form {
@@ -56,6 +57,13 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+            }
+
+            Section("Menu bar") {
+                Toggle("Show FocusGuard status in the menu bar", isOn: $showMenuBarStatus)
+                Text("The shield fills while a block is active; the dropdown lists active sessions with their remaining time.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Recurring warnings") {

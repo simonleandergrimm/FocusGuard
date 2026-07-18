@@ -3,12 +3,15 @@ import SwiftUI
 
 @main
 struct FocusGuardApp: App {
+    static let mainWindowID = "main"
+
     private static let defaultInterfaceZoom = 1.15
     private static let minimumInterfaceZoom = 0.8
     private static let maximumInterfaceZoom = 1.6
 
     @StateObject private var model: AppModel
     @AppStorage("interfaceZoom") private var interfaceZoom = Self.defaultInterfaceZoom
+    @AppStorage("showMenuBarStatus") private var showMenuBarStatus = true
 
     init() {
         guard AppInstanceCoordinator.shouldContinueLaunching() else {
@@ -18,7 +21,7 @@ struct FocusGuardApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: Self.mainWindowID) {
             ContentView(model: model, interfaceZoom: $interfaceZoom)
                 .frame(minWidth: 820, minHeight: 650)
                 .background(WindowAppearanceConfigurator())
@@ -51,5 +54,12 @@ struct FocusGuardApp: App {
         Settings {
             SettingsView(model: model)
         }
+
+        MenuBarExtra(isInserted: $showMenuBarStatus) {
+            MenuBarStatusView(model: model)
+        } label: {
+            MenuBarStatusLabel(model: model)
+        }
+        .menuBarExtraStyle(.window)
     }
 }
