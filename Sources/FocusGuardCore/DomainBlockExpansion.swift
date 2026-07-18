@@ -43,4 +43,16 @@ public enum DomainBlockExpansion {
 
         return result
     }
+
+    /// True when `host` is covered by `blockedDomain`, including any
+    /// subdomain of an expanded domain. The hosts file itself cannot
+    /// wildcard, but callers that consult the policy directly — the browser
+    /// extension and the landing page — can, so `old.reddit.com` is caught
+    /// when `reddit.com` is blocked.
+    public static func matches(host: String, blockedDomain: String) -> Bool {
+        guard let normalizedHost = DomainNormalizer.normalize(host) else { return false }
+        let expanded = expandedDomains(for: blockedDomain)
+        if expanded.contains(normalizedHost) { return true }
+        return expanded.contains { normalizedHost.hasSuffix(".\($0)") }
+    }
 }

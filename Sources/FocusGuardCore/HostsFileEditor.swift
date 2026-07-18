@@ -19,19 +19,45 @@ public enum HostsFileEditor {
     }
 
     public static func removingManagedSection(from original: String) -> String {
-        guard let beginRange = original.range(of: beginMarker) else { return original }
-        guard let endRange = original.range(of: endMarker, range: beginRange.upperBound..<original.endIndex) else {
-            return original
-        }
-
-        var removalEnd = endRange.upperBound
-        if removalEnd < original.endIndex, original[removalEnd] == "\n" {
-            removalEnd = original.index(after: removalEnd)
-        }
-
         var result = original
-        result.removeSubrange(beginRange.lowerBound..<removalEnd)
+        while let beginRange = result.range(of: beginMarker) {
+            guard let endRange = result.range(of: endMarker, range: beginRange.upperBound..<result.endIndex) else {
+                break
+            }
+
+            var removalEnd = endRange.upperBound
+            if removalEnd < result.endIndex, result[removalEnd] == "\n" {
+                removalEnd = result.index(after: removalEnd)
+            }
+
+            result.removeSubrange(beginRange.lowerBound..<removalEnd)
+        }
         return result
+    }
+
+    /// Replaces the file at `path` atomically: the content is written to a
+    /// temporary file in the same directory (so rename(2) stays on one
+    /// filesystem) with mode 644, then renamed over the destination. Readers
+    /// never observe a truncated or partially written file.
+    public static func write(_ content: String, toPath path: String) throws {
+        let destination = URL(fileURLWithPath: path)
+        let temporary = destination
+            .deletingLastPathComponent()
+            .appendingPathComponent(".\(destination.lastPathComponent).focusguard.tmp")
+
+        guard FileManager.default.createFile(
+            atPath: temporary.path,
+            contents: Data(content.utf8),
+            attributes: [.posixPermissions: 0o644]
+        ) else {
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+        }
+
+        guard rename(temporary.path, destination.path) == 0 else {
+            let renameError = POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            try? FileManager.default.removeItem(at: temporary)
+            throw renameError
+        }
     }
 
     private static func expandedDomains(_ domains: Set<String>) -> [String] {

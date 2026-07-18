@@ -30,7 +30,7 @@ private final class HelperEngine {
     private let configuration: HelperConfiguration
     private let landingPageServer: LandingPageServer
     private var lastDomains: Set<String>?
-    private var lastExecutables = Set<String>()
+    private var lastTargets = Set<ProcessMatchTarget>()
 
     init(configuration: HelperConfiguration) {
         self.configuration = configuration
@@ -54,7 +54,9 @@ private final class HelperEngine {
             let activePlans = document.activePlans()
             landingPageServer.update(activePlans: activePlans)
             let domains = Set(activePlans.flatMap(\.domains))
-            let executables = Set(activePlans.flatMap(\.applications).map(\.executableName))
+            let targets = Set(activePlans.flatMap(\.applications).map {
+                ProcessMatchTarget(executableName: $0.executableName, bundleName: $0.bundleName)
+            })
 
             if lastDomains != domains {
                 try updateHosts(blockedDomains: domains)
@@ -62,11 +64,11 @@ private final class HelperEngine {
                 log("updated hosts for \(domains.count) domain targets")
             }
 
-            lastExecutables = executables
-            terminateBlockedApplications(executableNames: executables)
+            lastTargets = targets
+            terminateBlockedApplications(targets: targets)
         } catch {
             // Keep enforcing the last valid state if the policy is briefly unreadable.
-            terminateBlockedApplications(executableNames: lastExecutables)
+            terminateBlockedApplications(targets: lastTargets)
             log("policy read failed; retained prior state: \(error.localizedDescription)")
         }
     }
@@ -87,14 +89,14 @@ private final class HelperEngine {
         let updated = HostsFileEditor.updating(original, blockedDomains: blockedDomains)
         guard updated != original else { return }
 
-        try updated.write(toFile: path, atomically: false, encoding: .utf8)
+        try HostsFileEditor.write(updated, toPath: path)
         Self.runAndWait("/usr/bin/dscacheutil", arguments: ["-flushcache"])
         Self.runAndWait("/usr/bin/killall", arguments: ["-HUP", "mDNSResponder"])
     }
 
-    private func terminateBlockedApplications(executableNames: Set<String>) {
+    private func terminateBlockedApplications(targets: Set<ProcessMatchTarget>) {
         let matchingProcesses = ProcessScanner.matching(
-            executableNames: executableNames,
+            targets: targets,
             ownerUID: configuration.ownerUID
         ).filter { $0.pid != getpid() }
 
@@ -133,7 +135,7 @@ private enum FocusGuardHelperMain {
                 let path = "/etc/hosts"
                 let original = try String(contentsOfFile: path, encoding: .utf8)
                 let cleaned = HostsFileEditor.updating(original, blockedDomains: [])
-                try cleaned.write(toFile: path, atomically: false, encoding: .utf8)
+                try HostsFileEditor.write(cleaned, toPath: path)
                 exit(EXIT_SUCCESS)
             } catch {
                 fputs("FocusGuard cleanup failed: \(error.localizedDescription)\n", stderr)

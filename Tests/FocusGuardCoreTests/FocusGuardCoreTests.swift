@@ -362,6 +362,84 @@ func xDomainExpansionCoversFirstPartyServiceHosts() {
 }
 
 @Test
+func subdomainsOfBlockedDomainsMatch() {
+    #expect(DomainBlockExpansion.matches(host: "old.reddit.com", blockedDomain: "reddit.com"))
+    #expect(DomainBlockExpansion.matches(host: "www.reddit.com", blockedDomain: "reddit.com"))
+    #expect(DomainBlockExpansion.matches(host: "reddit.com", blockedDomain: "reddit.com"))
+    #expect(!DomainBlockExpansion.matches(host: "notreddit.com", blockedDomain: "reddit.com"))
+    #expect(!DomainBlockExpansion.matches(host: "reddit.com.evil.example", blockedDomain: "reddit.com"))
+
+    let now = Date(timeIntervalSince1970: 10_000)
+    let plan = BlockPlan(
+        title: "No Reddit",
+        domains: ["reddit.com"],
+        applications: [],
+        startsAt: now.addingTimeInterval(-60),
+        endsAt: now.addingTimeInterval(600),
+        strictness: .locked,
+        summary: ""
+    )
+    let document = BlockScheduleDocument(plans: [plan])
+
+    #expect(document.activeWebsiteBlock(for: "old.reddit.com", at: now)?.title == "No Reddit")
+    #expect(document.activeWebsiteBlock(for: "notreddit.com", at: now) == nil)
+}
+
+@Test
+func hostsFileEditorRemovesDuplicateManagedSections() {
+    let duplicated = """
+    127.0.0.1 localhost
+    \(HostsFileEditor.beginMarker)
+    127.0.0.1 stale.example
+    \(HostsFileEditor.endMarker)
+    255.255.255.255 broadcasthost
+    \(HostsFileEditor.beginMarker)
+    127.0.0.1 stale2.example
+    \(HostsFileEditor.endMarker)
+    """
+
+    let cleaned = HostsFileEditor.removingManagedSection(from: duplicated)
+    #expect(!cleaned.contains("stale.example"))
+    #expect(!cleaned.contains("stale2.example"))
+    #expect(cleaned.contains("127.0.0.1 localhost"))
+    #expect(cleaned.contains("255.255.255.255 broadcasthost"))
+
+    let updated = HostsFileEditor.updating(duplicated, blockedDomains: ["example.com"])
+    #expect(updated.components(separatedBy: HostsFileEditor.beginMarker).count == 2)
+    #expect(!updated.contains("stale.example"))
+}
+
+@Test
+func hostsFileEditorLeavesUnterminatedManagedSectionAlone() {
+    let missingEndMarker = """
+    127.0.0.1 localhost
+    \(HostsFileEditor.beginMarker)
+    127.0.0.1 orphan.example
+    """
+
+    #expect(HostsFileEditor.removingManagedSection(from: missingEndMarker) == missingEndMarker)
+}
+
+@Test
+func hostsFileWriteReplacesFileAtomicallyWithExpectedPermissions() throws {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("FocusGuardHostsWriteTests-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+
+    let path = directory.appendingPathComponent("hosts").path
+    try "original\n".write(toFile: path, atomically: true, encoding: .utf8)
+
+    try HostsFileEditor.write("updated\n", toPath: path)
+
+    #expect(try String(contentsOfFile: path, encoding: .utf8) == "updated\n")
+    let attributes = try FileManager.default.attributesOfItem(atPath: path)
+    #expect((attributes[.posixPermissions] as? NSNumber)?.uint16Value == 0o644)
+    let leftovers = try FileManager.default.contentsOfDirectory(atPath: directory.path)
+    #expect(leftovers == ["hosts"])
+}
+
+@Test
 func strictnessControlsEffectiveEnd() {
     let start = Date(timeIntervalSince1970: 1_000)
     let end = start.addingTimeInterval(3_600)
@@ -416,7 +494,7 @@ func processScannerFindsCurrentExecutableForCurrentUser() {
     }
     let executableName = URL(fileURLWithPath: executablePath).lastPathComponent
     let matches = ProcessScanner.matching(
-        executableNames: [executableName],
+        targets: [ProcessMatchTarget(executableName: executableName)],
         ownerUID: getuid()
     )
 
@@ -424,7 +502,49 @@ func processScannerFindsCurrentExecutableForCurrentUser() {
 }
 
 @Test
-func activeWebsiteBlockMatchesRootAndWWWHostOnlyWhileActive() {
+func processTargetMatchingRequiresBundlePathWhenKnown() {
+    let slack = ProcessMatchTarget(executableName: "Slack", bundleName: "Slack.app")
+    let bareElectron = ProcessMatchTarget(executableName: "Electron")
+
+    #expect(
+        ProcessScanner.target(
+            matching: "/Applications/Slack.app/Contents/MacOS/Slack",
+            in: [slack]
+        ) == slack
+    )
+    #expect(
+        ProcessScanner.target(
+            matching: "/Users/dev/SomeTool.app/Contents/MacOS/Slack",
+            in: [slack]
+        ) == nil
+    )
+    #expect(
+        ProcessScanner.target(
+            matching: "/Applications/Other.app/Contents/MacOS/Electron",
+            in: [bareElectron]
+        ) == bareElectron
+    )
+    #expect(
+        ProcessScanner.target(
+            matching: "/Applications/Slack.app/Contents/MacOS/Helper",
+            in: [slack, bareElectron]
+        ) == nil
+    )
+}
+
+@Test
+func blockedApplicationDecodesPolicyFilesWithoutBundleName() throws {
+    let data = Data(
+        #"{"displayName":"Slack","bundleIdentifier":"com.tinyspeck.slackmacgap","executableName":"Slack"}"#.utf8
+    )
+    let application = try JSONDecoder().decode(BlockedApplication.self, from: data)
+
+    #expect(application.bundleName == nil)
+    #expect(application.executableName == "Slack")
+}
+
+@Test
+func activeWebsiteBlockMatchesRootWWWAndSubdomainHostsOnlyWhileActive() {
     let now = Date(timeIntervalSince1970: 10_000)
     let plan = BlockPlan(
         title: "Write the draft",
@@ -439,7 +559,8 @@ func activeWebsiteBlockMatchesRootAndWWWHostOnlyWhileActive() {
 
     #expect(document.activeWebsiteBlock(for: "example.com", at: now)?.title == "Write the draft")
     #expect(document.activeWebsiteBlock(for: "www.example.com", at: now)?.endsAt == plan.endsAt)
-    #expect(document.activeWebsiteBlock(for: "other.example.com", at: now) == nil)
+    #expect(document.activeWebsiteBlock(for: "other.example.com", at: now)?.title == "Write the draft")
+    #expect(document.activeWebsiteBlock(for: "unrelated.example", at: now) == nil)
     #expect(document.activeWebsiteBlock(for: "example.com", at: plan.endsAt) == nil)
 }
 
@@ -491,6 +612,29 @@ func recurringPlanSupportsOvernightOccurrences() {
     )
 
     #expect(recurring.activeOccurrence(at: tuesdayAtOne) != nil)
+}
+
+@Test
+func overlappingRecurringOccurrencesCollapseToTheNewestOccurrence() {
+    // Pins current behavior: when consecutive occurrences overlap (duration
+    // longer than the gap between weekdays), the most recent start wins.
+    let formatter = ISO8601DateFormatter()
+    let tuesdayAtTen = formatter.date(from: "2026-07-14T10:00:00Z")!
+    let recurring = RecurringBlockPlan(
+        title: "Long block",
+        domains: ["example.com"],
+        applications: [],
+        weekdays: [.monday, .tuesday],
+        startHour: 9,
+        startMinute: 0,
+        durationMinutes: 2_880,
+        timeZoneIdentifier: "UTC",
+        strictness: .focused,
+        summary: ""
+    )
+
+    let occurrence = recurring.activeOccurrence(at: tuesdayAtTen)
+    #expect(occurrence?.startsAt == formatter.date(from: "2026-07-14T09:00:00Z"))
 }
 
 @Test

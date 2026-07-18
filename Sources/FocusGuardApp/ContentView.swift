@@ -1846,7 +1846,8 @@ private struct ManualTargetsEditor: View {
             BlockedApplication(
                 displayName: application.displayName,
                 bundleIdentifier: application.bundleIdentifier,
-                executableName: application.executableName
+                executableName: application.executableName,
+                bundleName: application.bundleName
             )
         )
         applications.sort { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }

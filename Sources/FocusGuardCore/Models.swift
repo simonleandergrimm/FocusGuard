@@ -43,11 +43,21 @@ public struct BlockedApplication: Codable, Hashable, Identifiable, Sendable {
     public let displayName: String
     public let bundleIdentifier: String
     public let executableName: String
+    /// The `.app` bundle directory name (for example `Slack.app`). Optional so
+    /// policy files written before this field existed keep decoding; matching
+    /// falls back to executable name alone when absent.
+    public let bundleName: String?
 
-    public init(displayName: String, bundleIdentifier: String, executableName: String) {
+    public init(
+        displayName: String,
+        bundleIdentifier: String,
+        executableName: String,
+        bundleName: String? = nil
+    ) {
         self.displayName = displayName
         self.bundleIdentifier = bundleIdentifier
         self.executableName = executableName
+        self.bundleName = bundleName
     }
 }
 

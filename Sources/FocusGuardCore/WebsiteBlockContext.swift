@@ -31,7 +31,7 @@ public extension BlockScheduleDocument {
 
         for plan in activePlans(at: date) {
             for domain in plan.domains {
-                guard DomainBlockExpansion.expandedDomains(for: domain).contains(normalizedHost) else {
+                guard DomainBlockExpansion.matches(host: normalizedHost, blockedDomain: domain) else {
                     continue
                 }
 

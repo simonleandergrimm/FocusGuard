@@ -5,6 +5,7 @@ struct InstalledApplication: Hashable, Sendable {
     let displayName: String
     let bundleIdentifier: String
     let executableName: String
+    let bundleName: String
 }
 
 struct ApplicationResolution: Sendable {
@@ -45,7 +46,8 @@ struct ApplicationCatalog: Sendable {
                     InstalledApplication(
                         displayName: displayName,
                         bundleIdentifier: bundleIdentifier,
-                        executableName: executableName
+                        executableName: executableName,
+                        bundleName: url.lastPathComponent
                     )
                 )
             }
@@ -78,7 +80,8 @@ struct ApplicationCatalog: Sendable {
                 BlockedApplication(
                     displayName: application.displayName,
                     bundleIdentifier: application.bundleIdentifier,
-                    executableName: application.executableName
+                    executableName: application.executableName,
+                    bundleName: application.bundleName
                 )
             )
         }

@@ -11,12 +11,26 @@ public struct RunningProcess: Equatable, Sendable {
     }
 }
 
+/// Identifies a process to terminate. Matching on the executable basename
+/// alone is unsafe for generic names (an `Electron` executable could belong
+/// to anything), so when `bundleName` is known the process's full path must
+/// also run through that `.app` directory.
+public struct ProcessMatchTarget: Hashable, Sendable {
+    public let executableName: String
+    public let bundleName: String?
+
+    public init(executableName: String, bundleName: String? = nil) {
+        self.executableName = executableName
+        self.bundleName = bundleName
+    }
+}
+
 public enum ProcessScanner {
     public static func matching(
-        executableNames: Set<String>,
+        targets: Set<ProcessMatchTarget>,
         ownerUID: uid_t
     ) -> [RunningProcess] {
-        guard !executableNames.isEmpty else { return [] }
+        guard !targets.isEmpty else { return [] }
 
         let capacity = 8_192
         var pids = [pid_t](repeating: 0, count: capacity)
@@ -43,9 +57,20 @@ public enum ProcessScanner {
             let path = pathBuffer.withUnsafeBufferPointer { buffer in
                 String(cString: buffer.baseAddress!)
             }
-            let executableName = URL(fileURLWithPath: path).lastPathComponent
-            guard executableNames.contains(executableName) else { return nil }
-            return RunningProcess(pid: pid, executableName: executableName)
+            guard let target = target(matching: path, in: targets) else { return nil }
+            return RunningProcess(pid: pid, executableName: target.executableName)
+        }
+    }
+
+    public static func target(
+        matching path: String,
+        in targets: Set<ProcessMatchTarget>
+    ) -> ProcessMatchTarget? {
+        let executableName = URL(fileURLWithPath: path).lastPathComponent
+        return targets.first { target in
+            guard target.executableName == executableName else { return false }
+            guard let bundleName = target.bundleName else { return true }
+            return path.contains("/\(bundleName)/")
         }
     }
 }
