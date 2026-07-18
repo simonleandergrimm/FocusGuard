@@ -80,7 +80,7 @@ struct SettingsView: View {
             }
 
             Section("Browser landing pages") {
-                Text("Click Export and show extension first. Then, in Chrome, Brave, or Edge, enable Developer mode on the Extensions page, choose Load unpacked, and select the Finder folder that opens.")
+                Text("Open setup, remove any older FocusGuard extension that points somewhere else, then choose Load unpacked and select the Finder folder FocusGuard opens.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text("~/Library/Application Support/FocusGuard/BrowserExtension")
@@ -93,7 +93,7 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Button("Export and show extension") { revealBrowserExtension() }
+                    Button("Open extension setup") { revealBrowserExtension() }
                 }
 
                 Text("Browser DNS behavior varies. Install the extension for reliable HTTPS and subdomain coverage; if a browser still bypasses a block, review its Secure DNS settings.")
@@ -137,13 +137,34 @@ struct SettingsView: View {
     private func revealBrowserExtension() {
         do {
             let extensionURL = try BrowserExtensionExporter.export()
-            guard NSWorkspace.shared.open(extensionURL) else {
+            let openedFinder = NSWorkspace.shared.open(extensionURL)
+            let openedBrowser = openChromiumExtensionsPage()
+            guard openedFinder else {
                 statusMessage = "The extension was exported, but Finder did not open."
                 return
             }
-            statusMessage = "Extension exported to Application Support and opened in Finder"
+            statusMessage = openedBrowser
+                ? "In Chrome, replace any older FocusGuard entry, then Load unpacked from the Finder folder."
+                : "Extension exported. Open your browser's Extensions page, then Load unpacked from the Finder folder."
         } catch {
             statusMessage = error.localizedDescription
+        }
+    }
+
+    private func openChromiumExtensionsPage() -> Bool {
+        let candidates = ["Google Chrome", "Brave Browser", "Microsoft Edge"]
+        guard let browser = candidates.first(where: {
+            FileManager.default.fileExists(atPath: "/Applications/\($0).app")
+        }) else { return false }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        process.arguments = ["-a", browser, "chrome://extensions/"]
+        do {
+            try process.run()
+            return true
+        } catch {
+            return false
         }
     }
 }

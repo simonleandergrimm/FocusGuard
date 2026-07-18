@@ -1,4 +1,5 @@
 const FOCUSGUARD_ORIGIN = "http://127.0.0.1:8765";
+const OPEN_TAB_SCAN_ALARM = "focusguard-scan-open-tabs";
 const pendingTabs = new Set();
 
 async function blockedStatus(hostname) {
@@ -44,6 +45,31 @@ async function redirectIfBlocked(tabId, url) {
   }
 }
 
+async function scanOpenTabs() {
+  try {
+    const tabs = await chrome.tabs.query({
+      url: ["http://*/*", "https://*/*"]
+    });
+    await Promise.all(
+      tabs.map((tab) => {
+        if (typeof tab.id !== "number" || !tab.url) return undefined;
+        return redirectIfBlocked(tab.id, tab.url);
+      })
+    );
+  } catch {
+    // A navigation or content-script check will retry if Chrome is starting up.
+  }
+}
+
+async function ensureOpenTabScanAlarm() {
+  const existing = await chrome.alarms.get(OPEN_TAB_SCAN_ALARM);
+  if (!existing) {
+    await chrome.alarms.create(OPEN_TAB_SCAN_ALARM, {
+      periodInMinutes: 0.5
+    });
+  }
+}
+
 chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   if (details.frameId !== 0) return;
   await redirectIfBlocked(details.tabId, details.url);
@@ -63,6 +89,22 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   }
 });
 
+chrome.runtime.onInstalled.addListener(async () => {
+  await ensureOpenTabScanAlarm();
+  await scanOpenTabs();
+});
+
+chrome.runtime.onStartup.addListener(async () => {
+  await ensureOpenTabScanAlarm();
+  await scanOpenTabs();
+});
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === OPEN_TAB_SCAN_ALARM) {
+    await scanOpenTabs();
+  }
+});
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== "focusguard.checkHost") return false;
 
@@ -71,3 +113,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     .catch(() => sendResponse({ blocked: false }));
   return true;
 });
+
+// An unpacked extension can be reloaded while tabs are already open. Check
+// those tabs immediately instead of waiting for the next navigation event.
+ensureOpenTabScanAlarm().catch(() => {});
+scanOpenTabs();
