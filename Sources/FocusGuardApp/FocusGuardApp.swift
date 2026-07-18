@@ -10,6 +10,7 @@ struct FocusGuardApp: App {
     private static let maximumInterfaceZoom = 1.6
 
     @StateObject private var model: AppModel
+    @StateObject private var pomodoro: PomodoroTimerModel
     @AppStorage("interfaceZoom") private var interfaceZoom = Self.defaultInterfaceZoom
     @AppStorage("sidebarVisible") private var sidebarVisible = true
     @AppStorage("showMenuBarStatus") private var showMenuBarStatus = true
@@ -19,11 +20,12 @@ struct FocusGuardApp: App {
             Darwin.exit(EXIT_SUCCESS)
         }
         _model = StateObject(wrappedValue: AppModel())
+        _pomodoro = StateObject(wrappedValue: PomodoroTimerModel())
     }
 
     var body: some Scene {
         Window("FocusGuard", id: Self.mainWindowID) {
-            ContentView(model: model, interfaceZoom: $interfaceZoom)
+            ContentView(model: model, pomodoro: pomodoro, interfaceZoom: $interfaceZoom)
                 .frame(minWidth: 820, minHeight: 650)
                 .background(WindowAppearanceConfigurator())
         }
@@ -62,9 +64,9 @@ struct FocusGuardApp: App {
         }
 
         MenuBarExtra(isInserted: $showMenuBarStatus) {
-            MenuBarStatusView(model: model)
+            MenuBarStatusView(timer: pomodoro)
         } label: {
-            MenuBarStatusLabel(model: model)
+            MenuBarStatusLabel(timer: pomodoro)
         }
         .menuBarExtraStyle(.window)
     }

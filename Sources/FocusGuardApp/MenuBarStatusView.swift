@@ -1,103 +1,89 @@
 import AppKit
-import FocusGuardCore
 import SwiftUI
 
-/// The menu bar label: a shield that fills while any block is active.
+/// A compact Pomodoro readout that remains visible while working in other apps.
 struct MenuBarStatusLabel: View {
-    @ObservedObject var model: AppModel
+    @ObservedObject var timer: PomodoroTimerModel
 
     var body: some View {
-        Image(systemName: model.hasActiveSession(at: Date()) ? "shield.fill" : "shield")
+        HStack(spacing: 4) {
+            Image(systemName: timer.phase == .focus ? "timer" : "cup.and.saucer.fill")
+            Text(timer.timeDescription(at: timer.displayDate))
+                .monospacedDigit()
+        }
+        .help("\(timer.phase.title) · \(timer.isRunning ? "running" : "paused")")
     }
 }
 
-/// The menu bar dropdown: active sessions with remaining time, plus
-/// shortcuts to the main window and Settings.
+/// Pomodoro progress and controls, plus shortcuts to the app and Settings.
 struct MenuBarStatusView: View {
-    private static let timelineStart = Date()
-
-    @ObservedObject var model: AppModel
+    @ObservedObject var timer: PomodoroTimerModel
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
-        TimelineView(.periodic(from: Self.timelineStart, by: 1)) { context in
-            VStack(alignment: .leading, spacing: 12) {
-                let sessions = model.activeSessionSummaries(at: context.date)
-
-                if sessions.isEmpty {
-                    Label("No active blocks", systemImage: "checkmark.shield")
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(timer.phase.title)
+                        .font(.headline)
+                    Text(timer.isRunning ? "In progress" : "Paused")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
-                } else {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(sessions) { session in
-                            HStack(alignment: .firstTextBaseline) {
-                                Text(session.title)
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                                Spacer(minLength: 16)
-                                Text(Self.remainingDescription(until: session.endsAt, from: context.date))
-                                    .font(.system(.callout, design: .monospaced))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
                 }
-
-                Divider()
-
-                HStack {
-                    Button("Open FocusGuard") {
-                        openWindow(id: FocusGuardApp.mainWindowID)
-                        NSApp.activate(ignoringOtherApps: true)
-                    }
-                    Spacer()
-                    Button("Settings…") {
-                        openSettings()
-                        NSApp.activate(ignoringOtherApps: true)
-                    }
-                }
-                .controlSize(.small)
+                Spacer()
+                PomodoroProgressRing(
+                    fraction: timer.remainingFraction(at: timer.displayDate),
+                    isRunning: timer.isRunning
+                )
+                .scaleEffect(1.2)
             }
-            .padding(14)
-            .frame(width: 280)
+
+            Text(timer.timeDescription(at: timer.displayDate))
+                .font(.system(size: 34, weight: .semibold, design: .monospaced))
+                .monospacedDigit()
+
+            ProgressView(value: 1 - timer.remainingFraction(at: timer.displayDate))
+                .progressViewStyle(.linear)
+
+            HStack(spacing: 10) {
+                Button(timer.isRunning ? "Pause" : "Start") {
+                    if timer.isRunning {
+                        timer.pause()
+                    } else {
+                        timer.start()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button("Reset") { timer.reset() }
+                    .buttonStyle(.bordered)
+
+                Spacer()
+
+                Button(timer.phase == .focus ? "Take break" : "Focus") {
+                    timer.switchPhase()
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+            }
+
+            Divider()
+
+            HStack {
+                Button("Open FocusGuard") {
+                    openWindow(id: FocusGuardApp.mainWindowID)
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+                Spacer()
+                Button("Settings…") {
+                    openSettings()
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+            }
+            .controlSize(.small)
         }
-    }
-
-    static func remainingDescription(until end: Date, from date: Date) -> String {
-        let seconds = max(0, Int(end.timeIntervalSince(date).rounded(.up)))
-        let hours = seconds / 3_600
-        let minutes = (seconds % 3_600) / 60
-        if hours > 0 {
-            return "\(hours)h \(String(format: "%02d", minutes))m"
-        }
-        return "\(minutes)m \(String(format: "%02d", seconds % 60))s"
-    }
-}
-
-struct ActiveSessionSummary: Identifiable {
-    let id: String
-    let title: String
-    let endsAt: Date
-}
-
-extension AppModel {
-    func hasActiveSession(at date: Date) -> Bool {
-        !activeSessionSummaries(at: date).isEmpty
-    }
-
-    func activeSessionSummaries(at date: Date) -> [ActiveSessionSummary] {
-        let oneTime = plans
-            .filter { $0.isActive(at: date) }
-            .map { ActiveSessionSummary(id: "plan-\($0.id)", title: $0.title, endsAt: $0.effectiveEnd) }
-        let recurring = recurringPlans.compactMap { schedule -> ActiveSessionSummary? in
-            guard let occurrence = schedule.activeOccurrence(at: date) else { return nil }
-            return ActiveSessionSummary(
-                id: "recurring-\(schedule.id)",
-                title: schedule.title,
-                endsAt: occurrence.effectiveEnd
-            )
-        }
-        return (oneTime + recurring).sorted { $0.endsAt < $1.endsAt }
+        .padding(16)
+        .frame(width: 280)
     }
 }

@@ -29,6 +29,15 @@ private struct StoredPomodoroState: Codable {
     let remainingSeconds: Int
 }
 
+private final class PomodoroNotificationPresenter: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
+    }
+}
+
 @MainActor
 final class PomodoroTimerModel: ObservableObject {
     private static let storageKey = "pomodoroTimerState.v2"
@@ -40,15 +49,22 @@ final class PomodoroTimerModel: ObservableObject {
     @Published private(set) var isRunning = false
     @Published private(set) var endDate: Date?
     @Published private(set) var storedRemainingSeconds = 45 * 60
+    @Published private(set) var displayDate = Date()
 
     private let defaults: UserDefaults
+    private let notificationPresenter: PomodoroNotificationPresenter
     private var tickTask: Task<Void, Never>?
     private var notificationGeneration = UUID()
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        let notificationPresenter = PomodoroNotificationPresenter()
+        self.notificationPresenter = notificationPresenter
+        UNUserNotificationCenter.current().delegate = notificationPresenter
         restore()
-        reconcile(at: Date())
+        let now = Date()
+        displayDate = now
+        reconcile(at: now)
         if isRunning {
             scheduleCompletionNotification()
         }
@@ -56,7 +72,12 @@ final class PomodoroTimerModel: ObservableObject {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(500))
                 guard !Task.isCancelled else { return }
-                self?.reconcile(at: Date())
+                guard let self, self.isRunning else { continue }
+                let now = Date()
+                if Int(now.timeIntervalSince1970) != Int(self.displayDate.timeIntervalSince1970) {
+                    self.displayDate = now
+                }
+                self.reconcile(at: now)
             }
         }
     }
@@ -93,20 +114,24 @@ final class PomodoroTimerModel: ObservableObject {
     }
 
     func start() {
-        reconcile(at: Date())
+        let now = Date()
+        displayDate = now
+        reconcile(at: now)
         guard !isRunning else { return }
         if storedRemainingSeconds <= 0 {
             storedRemainingSeconds = durationSeconds(for: phase)
         }
         isRunning = true
-        endDate = Date().addingTimeInterval(TimeInterval(storedRemainingSeconds))
+        endDate = now.addingTimeInterval(TimeInterval(storedRemainingSeconds))
         persist()
         scheduleCompletionNotification()
     }
 
     func pause() {
         guard isRunning else { return }
-        storedRemainingSeconds = remainingSeconds(at: Date())
+        let now = Date()
+        displayDate = now
+        storedRemainingSeconds = remainingSeconds(at: now)
         isRunning = false
         endDate = nil
         cancelCompletionNotification()
@@ -114,6 +139,7 @@ final class PomodoroTimerModel: ObservableObject {
     }
 
     func reset() {
+        displayDate = Date()
         isRunning = false
         endDate = nil
         storedRemainingSeconds = durationSeconds(for: phase)
@@ -122,6 +148,7 @@ final class PomodoroTimerModel: ObservableObject {
     }
 
     func switchPhase() {
+        displayDate = Date()
         isRunning = false
         endDate = nil
         phase = phase.next

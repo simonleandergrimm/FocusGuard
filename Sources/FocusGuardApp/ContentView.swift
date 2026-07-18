@@ -6,8 +6,8 @@ struct ContentView: View {
     private static let claudeFMURL = URL(string: "https://www.youtube.com/watch?v=tRsQsTMvPNg")!
 
     @ObservedObject var model: AppModel
+    @ObservedObject var pomodoro: PomodoroTimerModel
     @Binding var interfaceZoom: Double
-    @StateObject private var pomodoro = PomodoroTimerModel()
     @Environment(\.openSettings) private var openSettings
     @State private var selectedPane: PlanPane = .oneTime
     @State private var editingPlan: BlockPlan?

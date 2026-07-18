@@ -60,7 +60,7 @@ struct SettingsView: View {
             }
 
             Section("Menu bar") {
-                Toggle("Show FocusGuard status in the menu bar", isOn: $showMenuBarStatus)
+                Toggle("Show Pomodoro in the menu bar", isOn: $showMenuBarStatus)
                 Text("The shield fills while a block is active; the dropdown lists active sessions with their remaining time.")
                     .font(.caption)
                     .foregroundStyle(.secondary)

@@ -57,7 +57,7 @@ struct PomodoroSidebarControl: View {
     }
 }
 
-private struct PomodoroProgressRing: View {
+struct PomodoroProgressRing: View {
     let fraction: Double
     let isRunning: Bool
 
