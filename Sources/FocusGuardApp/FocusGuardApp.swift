@@ -9,6 +9,7 @@ struct FocusGuardApp: App {
     private static let minimumInterfaceZoom = 0.8
     private static let maximumInterfaceZoom = 1.6
 
+    @NSApplicationDelegateAdaptor(FocusGuardApplicationDelegate.self) private var applicationDelegate
     @StateObject private var model: AppModel
     @StateObject private var pomodoro: PomodoroTimerModel
     @AppStorage("interfaceZoom") private var interfaceZoom = Self.defaultInterfaceZoom
