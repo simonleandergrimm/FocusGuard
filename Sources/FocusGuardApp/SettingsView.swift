@@ -5,6 +5,7 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var model: AppModel
     @State private var apiKey = ""
+    @State private var hasStoredAPIKey = false
     @State private var modelName = ModelSettings.current()
     @State private var statusMessage = ""
     @AppStorage("showMenuBarStatus") private var showMenuBarStatus = true
@@ -12,7 +13,22 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("OpenAI") {
-                SecureField("API key", text: $apiKey)
+                SecureField(
+                    hasStoredAPIKey ? "Saved in Keychain — enter a new key to replace" : "API key",
+                    text: $apiKey
+                )
+                if hasStoredAPIKey {
+                    HStack {
+                        Label("API key saved in Keychain", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Remove key", role: .destructive) {
+                            removeAPIKey()
+                        }
+                        .buttonStyle(.link)
+                    }
+                    .font(.caption)
+                }
                 TextField("Model", text: $modelName)
                 Text("FocusGuard defaults to gpt-5.6-terra with medium reasoning. You can enter another Responses API model here.")
                     .font(.caption)
@@ -61,7 +77,7 @@ struct SettingsView: View {
 
             Section("Menu bar") {
                 Toggle("Show Pomodoro in the menu bar", isOn: $showMenuBarStatus)
-                Text("The shield fills while a block is active; the dropdown lists active sessions with their remaining time.")
+                Text("The menu bar shows the current Pomodoro phase and remaining time.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -116,7 +132,7 @@ struct SettingsView: View {
         .preferredColorScheme(.light)
         .onAppear {
             do {
-                apiKey = try APIKeyStore.read() ?? ""
+                hasStoredAPIKey = try APIKeyStore.containsKey()
             } catch {
                 statusMessage = error.localizedDescription
             }
@@ -125,10 +141,25 @@ struct SettingsView: View {
 
     private func save() {
         do {
-            try APIKeyStore.save(apiKey)
+            if !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                try APIKeyStore.save(apiKey)
+                hasStoredAPIKey = true
+                apiKey = ""
+            }
             ModelSettings.save(modelName)
             modelName = ModelSettings.current()
             statusMessage = "Saved to this Mac"
+        } catch {
+            statusMessage = error.localizedDescription
+        }
+    }
+
+    private func removeAPIKey() {
+        do {
+            try APIKeyStore.save("")
+            apiKey = ""
+            hasStoredAPIKey = false
+            statusMessage = "API key removed"
         } catch {
             statusMessage = error.localizedDescription
         }

@@ -19,12 +19,19 @@ enum APIKeyStoreError: LocalizedError {
     }
 }
 
+@MainActor
 enum APIKeyStore {
     private static let service = "com.local.FocusGuard.openai"
     private static let account = "openai-api-key"
     private static let legacyDefaultsKey = "openAIAPIKey"
+    private static var cachedKey: String?
+    private static var hasLoadedCache = false
 
     static func read() throws -> String? {
+        if hasLoadedCache {
+            return cachedKey
+        }
+
         var query = baseQuery
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -36,9 +43,35 @@ enum APIKeyStore {
             guard let data = result as? Data,
                   let value = String(data: data, encoding: .utf8)
             else { throw APIKeyStoreError.invalidKeyData }
-            return normalized(value)
+            let key = normalized(value)
+            cachedKey = key
+            hasLoadedCache = true
+            return key
         case errSecItemNotFound:
-            return try migrateLegacyValueIfNeeded()
+            let key = try migrateLegacyValueIfNeeded()
+            cachedKey = key
+            hasLoadedCache = true
+            return key
+        default:
+            throw APIKeyStoreError.keychain(status)
+        }
+    }
+
+    static func containsKey() throws -> Bool {
+        if hasLoadedCache {
+            return cachedKey != nil
+        }
+
+        var query = baseQuery
+        query[kSecReturnAttributes as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+
+        let status = SecItemCopyMatching(query as CFDictionary, nil)
+        switch status {
+        case errSecSuccess:
+            return true
+        case errSecItemNotFound:
+            return normalized(UserDefaults.standard.string(forKey: legacyDefaultsKey)) != nil
         default:
             throw APIKeyStoreError.keychain(status)
         }
@@ -52,6 +85,8 @@ enum APIKeyStore {
                 throw APIKeyStoreError.keychain(status)
             }
             UserDefaults.standard.removeObject(forKey: legacyDefaultsKey)
+            cachedKey = nil
+            hasLoadedCache = true
             return
         }
 
@@ -62,6 +97,8 @@ enum APIKeyStore {
         )
         if updateStatus == errSecSuccess {
             UserDefaults.standard.removeObject(forKey: legacyDefaultsKey)
+            cachedKey = trimmed
+            hasLoadedCache = true
             return
         }
         guard updateStatus == errSecItemNotFound else {
@@ -75,6 +112,8 @@ enum APIKeyStore {
             throw APIKeyStoreError.keychain(addStatus)
         }
         UserDefaults.standard.removeObject(forKey: legacyDefaultsKey)
+        cachedKey = trimmed
+        hasLoadedCache = true
     }
 
     private static var baseQuery: [String: Any] {
